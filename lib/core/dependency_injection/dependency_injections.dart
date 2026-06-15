@@ -49,7 +49,7 @@ final offlineOutboxRepositoryProvider = Provider<OfflineOutboxRepository>((ref) 
 
 // 4. Feature Domain Repositories Providers
 final workspaceRepositoryProvider = Provider<WorkspaceRepository>((ref) {
-  return WorkspaceRepositoryImpl(ref.watch(workspaceDaoProvider), ref.watch(outboxDaoProvider));
+  return WorkspaceRepositoryImpl(ref.watch(workspaceDaoProvider), ref.watch(outboxDaoProvider), ref.watch(referenceDaoProvider));
 });
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
   return ProjectRepositoryImpl(ref.watch(projectDaoProvider), ref.watch(outboxDaoProvider));

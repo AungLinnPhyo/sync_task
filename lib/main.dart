@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:synctask/features/sync_task/presentation/screens/main_navigation_screen.dart';
 
 import 'core/dependency_injection/dependency_injections.dart';
 import 'features/sync_task/presentation/screens/sync_test_screen.dart';
@@ -13,12 +14,7 @@ void main() async {
   // 🎯 App စတင်သည်နှင့် di/di_providers.dart ထဲက အော့ဖ်လိုင်းဆင့်အင်ဂျင်ကြီးအား စတင်မောင်းနှင်လိုက်ခြင်း
   container.read(offlineSyncEngineProvider);
 
-  runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const MyApp(),
-    ),
-  );
+  runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -29,10 +25,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const SyncTestScreen(),
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+      home: const MainNavigationScreen(),
     );
   }
 }
