@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:core_offline/core_offline.dart';
+import 'package:synctask/features/sync_task/domain/usecases/workspace_usecase.dart';
 
 import '../../features/sync_task/data/data_sources/local/daos/outbox_dao.dart';
 import '../../features/sync_task/data/data_sources/local/daos/project_dao.dart';
@@ -10,6 +11,7 @@ import '../../features/sync_task/data/data_sources/local/daos/workspace_dao.dart
 import '../../features/sync_task/data/repositories/outbox_repository_impl.dart';
 import '../../features/sync_task/data/repositories/reference_repository_impl.dart';
 import '../../features/sync_task/domain/repositories/worksapce_repository.dart';
+import '../../features/sync_task/domain/usecases/project_usecase.dart';
 import '../database/app_database.dart';
 import '../../features/sync_task/data/processors/create_project_processor.dart';
 import '../../features/sync_task/data/processors/create_workspace_processor.dart';
@@ -66,4 +68,16 @@ final offlineSyncEngineProvider = Provider<OfflineSyncEngine>((ref) {
   engine.registerProcessor(ref.watch(createProjectProcessorProvider));
 
   return engine;
+});
+
+// === Consolidated Use Cases Providers ===
+
+// Workspace အတွက် Use Case Provider
+final workspaceUsecaseProvider = Provider<WorkspaceUsecase>((ref) {
+  return WorkspaceUsecase(ref.watch(workspaceRepositoryProvider));
+});
+
+// Project အတွက် Use Case Provider
+final projectUsecaseProvider = Provider<ProjectUsecase>((ref) {
+  return ProjectUsecase(ref.watch(projectRepositoryProvider));
 });
