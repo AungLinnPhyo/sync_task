@@ -17,9 +17,11 @@ class WorkspaceController extends StateNotifier<AsyncValue<void>> {
   Future<void> addWorkspace(String name) async {
     state = const AsyncValue.loading();
     try {
-      // 💡 အသစ်ဆောက်ထားသော Method အား လှမ်းခေါ်ခြင်း
+      // ၁။ Local DB နှင့် Outbox ထဲသို့ ဒေတာ အရင်သွင်းသည်
       await _ref.read(workspaceUsecaseProvider).createWorkspace(name);
       state = const AsyncValue.data(null);
+      // 🎯 ၂။ [အရေးကြီးဆုံးအဆင့်] ဒေတာသွင်းပြီးသည်နှင့် ချက်ချင်း Sync Engine ကို လှမ်းနှိုးပါ
+      _ref.read(offlineSyncEngineProvider).triggerSync();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

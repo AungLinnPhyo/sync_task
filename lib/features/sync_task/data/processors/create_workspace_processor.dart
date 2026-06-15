@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:core_offline/core_offline.dart';
 import 'package:core_offline/exceptions/sync_exceptions.dart';
 import 'package:dio/dio.dart';
@@ -22,12 +24,10 @@ class CreateWorkspaceProcessor implements OutboxActionProcessor {
 
       final options = Options(headers: {if (item.clientReferenceId != null) 'X-Idempotency-Key': item.clientReferenceId});
 
+      log('Create Workspace Payload: $payload with URL: ${item.url}');
+
       // Node.js Local Server သို့ လှမ်းပို့ခြင်း
-      final response = await _dio.post(
-        item.url, // '/api/workspaces'
-        data: payload,
-        options: options,
-      );
+      final response = await _dio.post(item.url, data: payload, options: options);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         return response.data as Map<String, dynamic>;
@@ -40,15 +40,28 @@ class CreateWorkspaceProcessor implements OutboxActionProcessor {
         throw SyncServerException(response.statusMessage ?? "Server Error"); // 👈 သင့် Engine မှ catch လုပ်မည့် Exception
       } else if (response.statusCode == 409) {
         throw SyncConflictException(response.statusMessage ?? "Conflict Error"); // 👈 ဒေတာထပ်နေလျှင်
+      } else if (response.statusCode != null && response.statusCode! >= 400 && response.statusCode! < 500) {
+        throw Exception("Client Error: ${response.statusCode} - ${response.data}"); // 👈 Retry မလုပ်တော့ဘဲ ရပ်ရန်
       } else {
         throw SyncNetworkException(response.statusMessage ?? "Network Error");
       }
     } on DioException catch (e) {
-      // Network လိုင်း လုံးဝမရှိခြင်း သို့မဟုတ် Timeout ဖြစ်ခြင်းများအတွက်
-      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout || e.message!.contains('SocketException')) {
-        throw SyncNetworkException("Network Error"); // 👈 Engine မှ Exponential Delay ဖြင့် ထပ်မံကြိုးစားရန်
+      // 🚨 [ဒီနေရာက အရေးကြီးဆုံးပါ] Dio Error အသေးစိတ်ကို ကွက်ကွက်ကွင်းကွင်း ထုတ်ကြည့်မည်
+      log('❌ [DioException caught in Processor]');
+      log('👉 Error Type: ${e.type}');
+      log('👉 Error Message: ${e.message}');
+      log('👉 Server Response Data: ${e.response?.data}');
+      log('👉 Server Response Status: ${e.response?.statusCode}');
+
+      if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout || (e.message != null && e.message!.contains('SocketException'))) {
+        throw SyncNetworkException("Network Error");
       }
       throw SyncServerException("Server Error");
+    } catch (e, stackTrace) {
+      // 🚨 မျှော်လင့်မထားသော အခြား Error များ (ဥပမာ- Casting Error သို့မဟုတ် Payload Type Error)
+      log('💥 [Unexpected Error in Processor]: $e');
+      log('📋 StackTrace: $stackTrace');
+      rethrow;
     }
   }
 

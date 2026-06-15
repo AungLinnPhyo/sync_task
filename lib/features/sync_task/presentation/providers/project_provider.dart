@@ -1,5 +1,3 @@
-// lib/features/sync_task/presentation/providers/project_state_provider.dart
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -20,6 +18,8 @@ class ProjectController extends StateNotifier<AsyncValue<void>> {
     try {
       await _ref.read(projectUsecaseProvider).createProject(name: name, workspaceId: workspaceId);
       state = const AsyncValue.data(null);
+      // 🎯 ၂။ [အရေးကြီးဆုံးအဆင့်] ဒေတာသွင်းပြီးသည်နှင့် ချက်ချင်း Sync Engine ကို လှမ်းနှိုးပါ
+      _ref.read(offlineSyncEngineProvider).triggerSync();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

@@ -17,12 +17,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
   @override
   Stream<List<ProjectEntity>> watchProjects(String workspaceId) {
     return _projectDao.watchProjectsByWorkspace(workspaceId).map((driftItems) {
-      return driftItems.map((item) => ProjectEntity(
-        id: item.id,
-        workspaceId: item.workspaceId,
-        name: item.name,
-        createdAt: item.createdAt,
-      )).toList();
+      return driftItems.map((item) => ProjectEntity(id: item.id, workspaceId: item.workspaceId, name: item.name, createdAt: item.createdAt)).toList();
     });
   }
 
@@ -44,7 +39,7 @@ class ProjectRepositoryImpl implements ProjectRepository {
     // ၃။ သင့် OutboxDao ကိုသုံးပြီး 'createProject' အလုပ်အား Queue ထဲထည့်ခြင်း
     await _outboxDao.insertItem(
       OutboxTableCompanion.insert(
-        url: '/api/projects',
+        url: 'projects',
         method: 'POST',
         actionType: 'createProject', // 💡 CreateProjectProcessor ၏ actionType နှင့် ကွက်တိတူရမည်
         payload: '{"name": "$name", "workspaceId": "$workspaceId"}', // Payload ထဲတွင် Parent ID အား ထည့်ပေးလိုက်သည်

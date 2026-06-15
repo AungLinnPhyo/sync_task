@@ -6,7 +6,6 @@ import '../../domain/entities/workspace_entity.dart';
 import '../../domain/repositories/worksapce_repository.dart';
 import '../data_sources/local/daos/outbox_dao.dart';
 import '../data_sources/local/daos/workspace_dao.dart';
-import '../data_sources/remotes/workspace_remote_data_source.dart';
 
 class WorkspaceRepositoryImpl implements WorkspaceRepository {
   final WorkspaceDao _localDao; // Data Access Object
@@ -22,39 +21,29 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository {
     final tempId = 'w-${_uuid.v4()}';
 
     // Local Database (Drift) ထဲသို့ ချက်ချင်း အော့ဖ်လိုင်းပြသနိုင်ရန် အရင်သိမ်းသည်
-    await _localDao.insertWorkspace(
-      WorkspaceTableCompanion.insert(
-        id: tempId,
-        name: name,
-        createdAt: Value(DateTime.now()),
-      ),
-    );
+    await _localDao.insertWorkspace(WorkspaceTableCompanion.insert(id: tempId, name: name, createdAt: Value(DateTime.now())));
 
     //🚨 အရေးကြီးဆုံးအပိုင်း: ဆာဗာသို့ ပို့ရန်အတွက် Outbox Queue ထဲသို့ အလုပ်တစ်ခုအနေဖြင့် ထည့်သွင်းရမည်
     await _outboxDao.insertItem(
       OutboxTableCompanion.insert(
-        url: '/api/workspaces',
+        url: 'workspaces',
         method: 'POST',
         actionType: 'createWorkspace',
         clientReferenceId: Value(tempId), // 💡 X-Idempotency-Key အတွက် ယာယီ UUID အား ထည့်ပေးလိုက်သည်
-        payload: '{"name": "$name", "id": "$tempId"}',
+        payload: '{"name": "$name"}',
         createdAt: Value(DateTime.now()),
         status: const Value('pending'),
-      )
+      ),
     );
+
+    // ref.read(offlineSyncEngineProvider).triggerSync();
   }
 
   @override
   Stream<List<WorkspaceEntity>> watchWorkspaces() {
     // Local Drift DB ထဲက ဒေတာတွေကို စောင့်ကြည့်ပြီး UI ဆီ Entity အဖြစ် ပြောင်းပေးသည်
     return _localDao.watchAllWorkspaces().map((items) {
-      return items.map((item) => WorkspaceEntity(
-        id: item.id,
-        createdAt: item.createdAt,
-        name: item.name,
-      )).toList();
-    },);
+      return items.map((item) => WorkspaceEntity(id: item.id, createdAt: item.createdAt, name: item.name)).toList();
+    });
   }
-
-  
 }

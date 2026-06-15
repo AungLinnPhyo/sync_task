@@ -20,7 +20,16 @@ import '../../features/sync_task/data/repositories/workspace_repository_impl.dar
 import '../../features/sync_task/domain/repositories/project_repository.dart';
 
 // 1. External Infrastructure Providers
-final dioProvider = Provider<Dio>((ref) => Dio());
+final dioProvider = Provider<Dio>((ref) {
+  return Dio(
+    BaseOptions(
+      baseUrl: 'http://192.168.1.38:3000/api/', // သင့် API Base URL (Added trailing slash)
+      connectTimeout: const Duration(seconds: 10), // 🎯 အင်တာနက်ချိတ်ဆက်ရန် ၁၀ စက္ကန့်ပဲစောင့်မည်
+      receiveTimeout: const Duration(seconds: 10), // 🎯 ဆာဗာဆီမှ ဒေတာပြန်လာရန် ၁၀ စက္ကန့်ပဲစောင့်မည်
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+    ),
+  );
+});
 final connectivityProvider = Provider<Connectivity>((ref) => Connectivity());
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 

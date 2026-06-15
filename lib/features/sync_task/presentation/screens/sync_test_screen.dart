@@ -3,21 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workspace_provider.dart';
 import '../widgets/workspace_card.dart';
 
-class SyncTestScreen extends ConsumerWidget {
+class SyncTestScreen extends ConsumerStatefulWidget {
   const SyncTestScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SyncTestScreen> createState() => _SyncTestScreenState();
+}
+
+class _SyncTestScreenState extends ConsumerState<SyncTestScreen> {
+  late TextEditingController _txtWorkspaceName;
+
+  @override
+  void initState() {
+    super.initState();
+    _txtWorkspaceName = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _txtWorkspaceName.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final workspacesAsync = ref.watch(workspacesStreamProvider);
     final workspaceController = ref.watch(workspaceControllerProvider);
-    final txtWorkspaceName = TextEditingController();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('🔌 Offline Sync Tester'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
-      ),
+      appBar: AppBar(title: const Text('🔌 Offline Sync Tester'), backgroundColor: Colors.teal, foregroundColor: Colors.white),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -31,11 +45,8 @@ class SyncTestScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: txtWorkspaceName,
-                        decoration: const InputDecoration(
-                          hintText: 'Enter Workspace Name',
-                          border: InputBorder.none,
-                        ),
+                        controller: _txtWorkspaceName,
+                        decoration: const InputDecoration(hintText: 'Enter Workspace Name', border: InputBorder.none),
                       ),
                     ),
                     workspaceController.maybeWhen(
@@ -43,11 +54,10 @@ class SyncTestScreen extends ConsumerWidget {
                       orElse: () => ElevatedButton.icon(
                         icon: const Icon(Icons.add),
                         label: const Text('Add Workspace'),
-                        onPressed: () {
-                          if (txtWorkspaceName.text.isNotEmpty) {
-                            ref.read(workspaceControllerProvider.notifier)
-                               .addWorkspace(txtWorkspaceName.text.trim());
-                            txtWorkspaceName.clear();
+                        onPressed: () async {
+                          if (_txtWorkspaceName.text.isNotEmpty) {
+                            await ref.read(workspaceControllerProvider.notifier).addWorkspace(_txtWorkspaceName.text.trim());
+                            _txtWorkspaceName.clear();
                           }
                         },
                       ),
@@ -62,7 +72,7 @@ class SyncTestScreen extends ConsumerWidget {
               child: Text('Workspaces & Projects List:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
             const SizedBox(height: 8),
-            
+
             // === ဒေတာစာရင်းများအား Stream ဖြင့် ပြသသည့်အပိုင်း ===
             Expanded(
               child: workspacesAsync.when(
@@ -88,5 +98,3 @@ class SyncTestScreen extends ConsumerWidget {
     );
   }
 }
-
-// ဝပ်စပေ့စ်ကတ်ပြားတစ်ခုချင်းစီအတွက် Sub-Widget
