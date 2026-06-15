@@ -10,7 +10,7 @@ part 'outbox_dao.g.dart';
 class OutboxDao extends DatabaseAccessor<AppDatabase> with _$OutboxDaoMixin {
   OutboxDao(super.db);
 
-  // ပို့ရန်ကျန်နေသော အလုပ်များကို စောင့်ကြည့်ရန်
+  // ပို့ရန်ကျန်နေသော Item များကို စောင့်ကြည့်ရန်
   Stream<List<OutboxTableData>> watchOutbox() {
     return select(outboxTable).watch();
   }
@@ -19,7 +19,7 @@ class OutboxDao extends DatabaseAccessor<AppDatabase> with _$OutboxDaoMixin {
 
   Future<int> insertItem(OutboxTableCompanion item) => into(outboxTable).insert(item);
 
-  // အလုပ်တစ်ခုကို ဖျက်ရန်
+  // Item တစ်ခုကို ဖျက်ရန်
   Future<void> deleteItem(int id) {
     return (delete(outboxTable)..where((t) => t.id.equals(id))).go();
   }

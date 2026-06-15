@@ -1432,21 +1432,30 @@ class $OutboxTableTable extends OutboxTable
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  static const VerificationMeta _urlMeta = const VerificationMeta('url');
   @override
-  late final GeneratedColumn<String> action = GeneratedColumn<String>(
-    'action',
+  late final GeneratedColumn<String> url = GeneratedColumn<String>(
+    'url',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
-    'entityType',
+  static const VerificationMeta _methodMeta = const VerificationMeta('method');
+  @override
+  late final GeneratedColumn<String> method = GeneratedColumn<String>(
+    'method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionTypeMeta = const VerificationMeta(
+    'actionType',
   );
   @override
-  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
-    'entity_type',
+  late final GeneratedColumn<String> actionType = GeneratedColumn<String>(
+    'action_type',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -1463,6 +1472,28 @@ class $OutboxTableTable extends OutboxTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _clientReferenceIdMeta = const VerificationMeta(
+    'clientReferenceId',
+  );
+  @override
+  late final GeneratedColumn<String> clientReferenceId =
+      GeneratedColumn<String>(
+        'client_reference_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1475,26 +1506,16 @@ class $OutboxTableTable extends OutboxTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
-  static const VerificationMeta _retryCountMeta = const VerificationMeta(
-    'retryCount',
-  );
-  @override
-  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
-    'retry_count',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    action,
-    entityType,
+    url,
+    method,
+    actionType,
     payload,
+    clientReferenceId,
+    status,
     createdAt,
-    retryCount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1511,21 +1532,29 @@ class $OutboxTableTable extends OutboxTable
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
-    if (data.containsKey('action')) {
+    if (data.containsKey('url')) {
       context.handle(
-        _actionMeta,
-        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+        _urlMeta,
+        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
       );
     } else if (isInserting) {
-      context.missing(_actionMeta);
+      context.missing(_urlMeta);
     }
-    if (data.containsKey('entity_type')) {
+    if (data.containsKey('method')) {
       context.handle(
-        _entityTypeMeta,
-        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+        _methodMeta,
+        method.isAcceptableOrUnknown(data['method']!, _methodMeta),
       );
     } else if (isInserting) {
-      context.missing(_entityTypeMeta);
+      context.missing(_methodMeta);
+    }
+    if (data.containsKey('action_type')) {
+      context.handle(
+        _actionTypeMeta,
+        actionType.isAcceptableOrUnknown(data['action_type']!, _actionTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionTypeMeta);
     }
     if (data.containsKey('payload')) {
       context.handle(
@@ -1535,16 +1564,25 @@ class $OutboxTableTable extends OutboxTable
     } else if (isInserting) {
       context.missing(_payloadMeta);
     }
+    if (data.containsKey('client_reference_id')) {
+      context.handle(
+        _clientReferenceIdMeta,
+        clientReferenceId.isAcceptableOrUnknown(
+          data['client_reference_id']!,
+          _clientReferenceIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    }
-    if (data.containsKey('retry_count')) {
-      context.handle(
-        _retryCountMeta,
-        retryCount.isAcceptableOrUnknown(data['retry_count']!, _retryCountMeta),
       );
     }
     return context;
@@ -1560,25 +1598,33 @@ class $OutboxTableTable extends OutboxTable
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      action: attachedDatabase.typeMapping.read(
+      url: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}action'],
+        data['${effectivePrefix}url'],
       )!,
-      entityType: attachedDatabase.typeMapping.read(
+      method: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}entity_type'],
+        data['${effectivePrefix}method'],
+      )!,
+      actionType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action_type'],
       )!,
       payload: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payload'],
       )!,
+      clientReferenceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}client_reference_id'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
-      )!,
-      retryCount: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}retry_count'],
       )!,
     );
   }
@@ -1591,39 +1637,51 @@ class $OutboxTableTable extends OutboxTable
 
 class OutboxTableData extends DataClass implements Insertable<OutboxTableData> {
   final int id;
-  final String action;
-  final String entityType;
+  final String url;
+  final String method;
+  final String actionType;
   final String payload;
+  final String? clientReferenceId;
+  final String status;
   final DateTime createdAt;
-  final int retryCount;
   const OutboxTableData({
     required this.id,
-    required this.action,
-    required this.entityType,
+    required this.url,
+    required this.method,
+    required this.actionType,
     required this.payload,
+    this.clientReferenceId,
+    required this.status,
     required this.createdAt,
-    required this.retryCount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['action'] = Variable<String>(action);
-    map['entity_type'] = Variable<String>(entityType);
+    map['url'] = Variable<String>(url);
+    map['method'] = Variable<String>(method);
+    map['action_type'] = Variable<String>(actionType);
     map['payload'] = Variable<String>(payload);
+    if (!nullToAbsent || clientReferenceId != null) {
+      map['client_reference_id'] = Variable<String>(clientReferenceId);
+    }
+    map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
-    map['retry_count'] = Variable<int>(retryCount);
     return map;
   }
 
   OutboxTableCompanion toCompanion(bool nullToAbsent) {
     return OutboxTableCompanion(
       id: Value(id),
-      action: Value(action),
-      entityType: Value(entityType),
+      url: Value(url),
+      method: Value(method),
+      actionType: Value(actionType),
       payload: Value(payload),
+      clientReferenceId: clientReferenceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(clientReferenceId),
+      status: Value(status),
       createdAt: Value(createdAt),
-      retryCount: Value(retryCount),
     );
   }
 
@@ -1634,11 +1692,15 @@ class OutboxTableData extends DataClass implements Insertable<OutboxTableData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return OutboxTableData(
       id: serializer.fromJson<int>(json['id']),
-      action: serializer.fromJson<String>(json['action']),
-      entityType: serializer.fromJson<String>(json['entityType']),
+      url: serializer.fromJson<String>(json['url']),
+      method: serializer.fromJson<String>(json['method']),
+      actionType: serializer.fromJson<String>(json['actionType']),
       payload: serializer.fromJson<String>(json['payload']),
+      clientReferenceId: serializer.fromJson<String?>(
+        json['clientReferenceId'],
+      ),
+      status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      retryCount: serializer.fromJson<int>(json['retryCount']),
     );
   }
   @override
@@ -1646,41 +1708,51 @@ class OutboxTableData extends DataClass implements Insertable<OutboxTableData> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'action': serializer.toJson<String>(action),
-      'entityType': serializer.toJson<String>(entityType),
+      'url': serializer.toJson<String>(url),
+      'method': serializer.toJson<String>(method),
+      'actionType': serializer.toJson<String>(actionType),
       'payload': serializer.toJson<String>(payload),
+      'clientReferenceId': serializer.toJson<String?>(clientReferenceId),
+      'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
-      'retryCount': serializer.toJson<int>(retryCount),
     };
   }
 
   OutboxTableData copyWith({
     int? id,
-    String? action,
-    String? entityType,
+    String? url,
+    String? method,
+    String? actionType,
     String? payload,
+    Value<String?> clientReferenceId = const Value.absent(),
+    String? status,
     DateTime? createdAt,
-    int? retryCount,
   }) => OutboxTableData(
     id: id ?? this.id,
-    action: action ?? this.action,
-    entityType: entityType ?? this.entityType,
+    url: url ?? this.url,
+    method: method ?? this.method,
+    actionType: actionType ?? this.actionType,
     payload: payload ?? this.payload,
+    clientReferenceId: clientReferenceId.present
+        ? clientReferenceId.value
+        : this.clientReferenceId,
+    status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
-    retryCount: retryCount ?? this.retryCount,
   );
   OutboxTableData copyWithCompanion(OutboxTableCompanion data) {
     return OutboxTableData(
       id: data.id.present ? data.id.value : this.id,
-      action: data.action.present ? data.action.value : this.action,
-      entityType: data.entityType.present
-          ? data.entityType.value
-          : this.entityType,
+      url: data.url.present ? data.url.value : this.url,
+      method: data.method.present ? data.method.value : this.method,
+      actionType: data.actionType.present
+          ? data.actionType.value
+          : this.actionType,
       payload: data.payload.present ? data.payload.value : this.payload,
+      clientReferenceId: data.clientReferenceId.present
+          ? data.clientReferenceId.value
+          : this.clientReferenceId,
+      status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      retryCount: data.retryCount.present
-          ? data.retryCount.value
-          : this.retryCount,
     );
   }
 
@@ -1688,88 +1760,115 @@ class OutboxTableData extends DataClass implements Insertable<OutboxTableData> {
   String toString() {
     return (StringBuffer('OutboxTableData(')
           ..write('id: $id, ')
-          ..write('action: $action, ')
-          ..write('entityType: $entityType, ')
+          ..write('url: $url, ')
+          ..write('method: $method, ')
+          ..write('actionType: $actionType, ')
           ..write('payload: $payload, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('retryCount: $retryCount')
+          ..write('clientReferenceId: $clientReferenceId, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, action, entityType, payload, createdAt, retryCount);
+  int get hashCode => Object.hash(
+    id,
+    url,
+    method,
+    actionType,
+    payload,
+    clientReferenceId,
+    status,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is OutboxTableData &&
           other.id == this.id &&
-          other.action == this.action &&
-          other.entityType == this.entityType &&
+          other.url == this.url &&
+          other.method == this.method &&
+          other.actionType == this.actionType &&
           other.payload == this.payload &&
-          other.createdAt == this.createdAt &&
-          other.retryCount == this.retryCount);
+          other.clientReferenceId == this.clientReferenceId &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt);
 }
 
 class OutboxTableCompanion extends UpdateCompanion<OutboxTableData> {
   final Value<int> id;
-  final Value<String> action;
-  final Value<String> entityType;
+  final Value<String> url;
+  final Value<String> method;
+  final Value<String> actionType;
   final Value<String> payload;
+  final Value<String?> clientReferenceId;
+  final Value<String> status;
   final Value<DateTime> createdAt;
-  final Value<int> retryCount;
   const OutboxTableCompanion({
     this.id = const Value.absent(),
-    this.action = const Value.absent(),
-    this.entityType = const Value.absent(),
+    this.url = const Value.absent(),
+    this.method = const Value.absent(),
+    this.actionType = const Value.absent(),
     this.payload = const Value.absent(),
+    this.clientReferenceId = const Value.absent(),
+    this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.retryCount = const Value.absent(),
   });
   OutboxTableCompanion.insert({
     this.id = const Value.absent(),
-    required String action,
-    required String entityType,
+    required String url,
+    required String method,
+    required String actionType,
     required String payload,
+    this.clientReferenceId = const Value.absent(),
+    this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.retryCount = const Value.absent(),
-  }) : action = Value(action),
-       entityType = Value(entityType),
+  }) : url = Value(url),
+       method = Value(method),
+       actionType = Value(actionType),
        payload = Value(payload);
   static Insertable<OutboxTableData> custom({
     Expression<int>? id,
-    Expression<String>? action,
-    Expression<String>? entityType,
+    Expression<String>? url,
+    Expression<String>? method,
+    Expression<String>? actionType,
     Expression<String>? payload,
+    Expression<String>? clientReferenceId,
+    Expression<String>? status,
     Expression<DateTime>? createdAt,
-    Expression<int>? retryCount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (action != null) 'action': action,
-      if (entityType != null) 'entity_type': entityType,
+      if (url != null) 'url': url,
+      if (method != null) 'method': method,
+      if (actionType != null) 'action_type': actionType,
       if (payload != null) 'payload': payload,
+      if (clientReferenceId != null) 'client_reference_id': clientReferenceId,
+      if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
-      if (retryCount != null) 'retry_count': retryCount,
     });
   }
 
   OutboxTableCompanion copyWith({
     Value<int>? id,
-    Value<String>? action,
-    Value<String>? entityType,
+    Value<String>? url,
+    Value<String>? method,
+    Value<String>? actionType,
     Value<String>? payload,
+    Value<String?>? clientReferenceId,
+    Value<String>? status,
     Value<DateTime>? createdAt,
-    Value<int>? retryCount,
   }) {
     return OutboxTableCompanion(
       id: id ?? this.id,
-      action: action ?? this.action,
-      entityType: entityType ?? this.entityType,
+      url: url ?? this.url,
+      method: method ?? this.method,
+      actionType: actionType ?? this.actionType,
       payload: payload ?? this.payload,
+      clientReferenceId: clientReferenceId ?? this.clientReferenceId,
+      status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
-      retryCount: retryCount ?? this.retryCount,
     );
   }
 
@@ -1779,20 +1878,26 @@ class OutboxTableCompanion extends UpdateCompanion<OutboxTableData> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (action.present) {
-      map['action'] = Variable<String>(action.value);
+    if (url.present) {
+      map['url'] = Variable<String>(url.value);
     }
-    if (entityType.present) {
-      map['entity_type'] = Variable<String>(entityType.value);
+    if (method.present) {
+      map['method'] = Variable<String>(method.value);
+    }
+    if (actionType.present) {
+      map['action_type'] = Variable<String>(actionType.value);
     }
     if (payload.present) {
       map['payload'] = Variable<String>(payload.value);
     }
+    if (clientReferenceId.present) {
+      map['client_reference_id'] = Variable<String>(clientReferenceId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (retryCount.present) {
-      map['retry_count'] = Variable<int>(retryCount.value);
     }
     return map;
   }
@@ -1801,11 +1906,13 @@ class OutboxTableCompanion extends UpdateCompanion<OutboxTableData> {
   String toString() {
     return (StringBuffer('OutboxTableCompanion(')
           ..write('id: $id, ')
-          ..write('action: $action, ')
-          ..write('entityType: $entityType, ')
+          ..write('url: $url, ')
+          ..write('method: $method, ')
+          ..write('actionType: $actionType, ')
           ..write('payload: $payload, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('retryCount: $retryCount')
+          ..write('clientReferenceId: $clientReferenceId, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -2707,20 +2814,24 @@ typedef $$ReferenceTableTableProcessedTableManager =
 typedef $$OutboxTableTableCreateCompanionBuilder =
     OutboxTableCompanion Function({
       Value<int> id,
-      required String action,
-      required String entityType,
+      required String url,
+      required String method,
+      required String actionType,
       required String payload,
+      Value<String?> clientReferenceId,
+      Value<String> status,
       Value<DateTime> createdAt,
-      Value<int> retryCount,
     });
 typedef $$OutboxTableTableUpdateCompanionBuilder =
     OutboxTableCompanion Function({
       Value<int> id,
-      Value<String> action,
-      Value<String> entityType,
+      Value<String> url,
+      Value<String> method,
+      Value<String> actionType,
       Value<String> payload,
+      Value<String?> clientReferenceId,
+      Value<String> status,
       Value<DateTime> createdAt,
-      Value<int> retryCount,
     });
 
 class $$OutboxTableTableFilterComposer
@@ -2737,13 +2848,18 @@ class $$OutboxTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get action => $composableBuilder(
-    column: $table.action,
+  ColumnFilters<String> get url => $composableBuilder(
+    column: $table.url,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get entityType => $composableBuilder(
-    column: $table.entityType,
+  ColumnFilters<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actionType => $composableBuilder(
+    column: $table.actionType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2752,13 +2868,18 @@ class $$OutboxTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnFilters<String> get clientReferenceId => $composableBuilder(
+    column: $table.clientReferenceId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get retryCount => $composableBuilder(
-    column: $table.retryCount,
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2777,13 +2898,18 @@ class $$OutboxTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get action => $composableBuilder(
-    column: $table.action,
+  ColumnOrderings<String> get url => $composableBuilder(
+    column: $table.url,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get entityType => $composableBuilder(
-    column: $table.entityType,
+  ColumnOrderings<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actionType => $composableBuilder(
+    column: $table.actionType,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2792,13 +2918,18 @@ class $$OutboxTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnOrderings<String> get clientReferenceId => $composableBuilder(
+    column: $table.clientReferenceId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get retryCount => $composableBuilder(
-    column: $table.retryCount,
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -2815,24 +2946,30 @@ class $$OutboxTableTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get action =>
-      $composableBuilder(column: $table.action, builder: (column) => column);
+  GeneratedColumn<String> get url =>
+      $composableBuilder(column: $table.url, builder: (column) => column);
 
-  GeneratedColumn<String> get entityType => $composableBuilder(
-    column: $table.entityType,
+  GeneratedColumn<String> get method =>
+      $composableBuilder(column: $table.method, builder: (column) => column);
+
+  GeneratedColumn<String> get actionType => $composableBuilder(
+    column: $table.actionType,
     builder: (column) => column,
   );
 
   GeneratedColumn<String> get payload =>
       $composableBuilder(column: $table.payload, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<int> get retryCount => $composableBuilder(
-    column: $table.retryCount,
+  GeneratedColumn<String> get clientReferenceId => $composableBuilder(
+    column: $table.clientReferenceId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
 
 class $$OutboxTableTableTableManager
@@ -2867,34 +3004,42 @@ class $$OutboxTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> action = const Value.absent(),
-                Value<String> entityType = const Value.absent(),
+                Value<String> url = const Value.absent(),
+                Value<String> method = const Value.absent(),
+                Value<String> actionType = const Value.absent(),
                 Value<String> payload = const Value.absent(),
+                Value<String?> clientReferenceId = const Value.absent(),
+                Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<int> retryCount = const Value.absent(),
               }) => OutboxTableCompanion(
                 id: id,
-                action: action,
-                entityType: entityType,
+                url: url,
+                method: method,
+                actionType: actionType,
                 payload: payload,
+                clientReferenceId: clientReferenceId,
+                status: status,
                 createdAt: createdAt,
-                retryCount: retryCount,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required String action,
-                required String entityType,
+                required String url,
+                required String method,
+                required String actionType,
                 required String payload,
+                Value<String?> clientReferenceId = const Value.absent(),
+                Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<int> retryCount = const Value.absent(),
               }) => OutboxTableCompanion.insert(
                 id: id,
-                action: action,
-                entityType: entityType,
+                url: url,
+                method: method,
+                actionType: actionType,
                 payload: payload,
+                clientReferenceId: clientReferenceId,
+                status: status,
                 createdAt: createdAt,
-                retryCount: retryCount,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

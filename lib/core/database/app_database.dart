@@ -17,7 +17,7 @@ import '../../features/sync_task/data/data_sources/local/schema/task_table.dart'
 import '../../features/sync_task/data/data_sources/local/schema/workspace_table.dart';
 import '../../features/sync_task/data/data_sources/local/schema/outbox_table.dart';
 
-part 'app_database.g.dart'; // Build Runner မောင်းလျှင် ထွက်လာမည်
+part 'app_database.g.dart';
 
 @DriftDatabase(tables: [WorkspaceTable, ProjectTable, TaskTable, CommentTable, ReferenceTable, OutboxTable], daos: [ReferenceDao, WorkspaceDao, ProjectDao, TaskDao, CommentDao, OutboxDao])
 class AppDatabase extends _$AppDatabase {

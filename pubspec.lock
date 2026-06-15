@@ -169,6 +169,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
+  core_offline:
+    dependency: "direct main"
+    description:
+      path: "D:/My Projects/Tamplates/core_offline"
+      relative: false
+    source: path
+    version: "0.0.1"
   coverage:
     dependency: transitive
     description:
