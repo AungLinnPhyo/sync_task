@@ -30,7 +30,11 @@ class CreateWorkspaceProcessor implements OutboxActionProcessor {
       final response = await _dio.post(item.url, data: payload, options: options);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data as Map<String, dynamic>;
+        // 💡 Server ID က int ဖြစ်နေနိုင်လို့ String ပြောင်းပေးရပါမယ် (Mapping Table က String လက်ခံလို့ပါ)
+        if (data['id'] != null) data['id'] = data['id'].toString();
+
+        return data;
         // 💡 ဆာဗာ ID နှင့် UUID Mapping ကို Engine ထဲက လိုင်းနံပါတ် ၁၃၈ မှာ အလိုအလျောက် မှတ်ပေးသွားမှာ ဖြစ်လို့
         // ဒီနေရာမှာ သီးသန့် saveMapping ထပ်ရေးစရာ မလိုတော့ပါဘူး။ အလွန်ကောင်းမွန်တဲ့ Engine logic ပါဗျာ။
       }

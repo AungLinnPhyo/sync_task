@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -7,15 +9,16 @@ import '../../domain/repositories/worksapce_repository.dart';
 import '../data_sources/local/daos/outbox_dao.dart';
 import '../data_sources/local/daos/reference_dao.dart';
 import '../data_sources/local/daos/workspace_dao.dart';
+import '../data_sources/remotes/workspace_remote_data_source.dart';
 
 class WorkspaceRepositoryImpl implements WorkspaceRepository {
   final WorkspaceDao _localDao; // Data Access Object
   final OutboxDao _outboxDao;
   final ReferenceDao _refDao;
-  // final WorkspaceRemoteDataSource _remoteDataSource;
+  final WorkspaceRemoteDataSource _remoteDataSource;
   final _uuid = const Uuid();
 
-  WorkspaceRepositoryImpl(this._localDao, this._outboxDao, this._refDao);
+  WorkspaceRepositoryImpl(this._localDao, this._outboxDao, this._refDao, this._remoteDataSource);
 
   @override
   Future<void> createWorkspace(String name) async {
@@ -42,23 +45,38 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository {
   }
 
   @override
-Stream<List<WorkspaceEntity>> watchWorkspaces() {
-  // ၁။ ဝင်လာမည့် ဒေတာများကို ကွန်ပေါင်း (Combine) လုပ်ရန် Drift ၏ watch ကို သုံးသည်
-  return _localDao.watchAllWorkspaces().asyncMap((items) async {
-    final List<WorkspaceEntity> entities = [];
+  Stream<List<WorkspaceEntity>> watchWorkspaces() {
+    // ၁။ ဝင်လာမည့် ဒေတာများကို ကွန်ပေါင်း (Combine) လုပ်ရန် Drift ၏ watch ကို သုံးသည်
+    return _localDao.watchAllWorkspaces().asyncMap((items) async {
+      final List<WorkspaceEntity> entities = [];
 
-    for (final item in items) {
-      // ၂။ Mapping Table ထဲမှာ အဆိုပါ Local ID အတွက် ဆာဗာ ID ရှိ၊ မရှိ လှမ်းစစ်သည်
-      final serverId = await _refDao.getServerId(item.id); 
+      for (final item in items) {
+        // ၂။ Mapping Table ထဲမှာ အဆိုပါ Local ID အတွက် ဆာဗာ ID ရှိ၊ မရှိ လှမ်းစစ်သည်
+        final serverId = await _refDao.getServerId(item.id);
 
-      entities.add(WorkspaceEntity(
-        // 🎯 ဆာဗာ ID ရှိရင် ၁၀၁ ပြမယ်၊ မရှိရင် (အော့ဖ်လိုင်းဖြစ်နေတုန်းဆိုရင်) w-xxx ကိုပဲ ပြထားမယ်
-        id: serverId ?? item.id, 
-        name: item.name,
-        createdAt: item.createdAt,
-      ));
+        entities.add(
+          WorkspaceEntity(
+            // 🎯 ဆာဗာ ID ရှိရင် ၁၀၁ ပြမယ်၊ မရှိရင် (အော့ဖ်လိုင်းဖြစ်နေတုန်းဆိုရင်) w-xxx ကိုပဲ ပြထားမယ်
+            id: serverId ?? item.id,
+            name: item.name,
+            createdAt: item.createdAt,
+          ),
+        );
+      }
+      return entities;
+    });
+  }
+
+  @override
+  Future<void> syncFromRemote() async {
+    // ၁။ ဆာဗာမှ ဒေတာများကို လှမ်းယူသည်
+    final remoteWorkspaces = await _remoteDataSource.fetchWorkspaces();
+
+    log('📥 Received ${remoteWorkspaces.length} workspaces from server.');
+
+    // ၂။ ရလာသော ဒေတာများကို Local DB ထဲသို့ သိမ်းဆည်းသည် (Cache လုပ်ခြင်း)
+    for (final model in remoteWorkspaces) {
+      await _localDao.insertWorkspace(WorkspaceTableCompanion.insert(id: model.id.toString(), name: model.name, createdAt: Value(DateTime.parse(model.createdAt))));
     }
-    return entities;
-  });
-}
+  }
 }

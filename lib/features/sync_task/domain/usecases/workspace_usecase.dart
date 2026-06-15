@@ -11,4 +11,6 @@ class WorkspaceUsecase {
     if (name.isEmpty) throw Exception('Workspace name cannot be empty');
     return _repository.createWorkspace(name);
   }
+
+  Future<void> syncFromRemote() => _repository.syncFromRemote();
 }

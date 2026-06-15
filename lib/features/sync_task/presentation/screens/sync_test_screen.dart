@@ -31,7 +31,12 @@ class _SyncTestScreenState extends ConsumerState<SyncTestScreen> {
     final workspaceController = ref.watch(workspaceControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('🔌 Offline Sync Tester'), backgroundColor: Colors.teal, foregroundColor: Colors.white),
+      appBar: AppBar(
+        title: const Text('🔌 Offline Sync Tester'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+        actions: [IconButton(icon: const Icon(Icons.cloud_download), onPressed: () => ref.read(workspaceControllerProvider.notifier).refreshFromServer())],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -66,32 +71,32 @@ class _SyncTestScreenState extends ConsumerState<SyncTestScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Workspaces & Projects List:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
-            const SizedBox(height: 8),
+            // const SizedBox(height: 16),
+            // const Align(
+            //   alignment: Alignment.centerLeft,
+            //   child: Text('Workspaces & Projects List:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            // ),
+            // const SizedBox(height: 8),
 
-            // === ဒေတာစာရင်းများအား Stream ဖြင့် ပြသသည့်အပိုင်း ===
-            Expanded(
-              child: workspacesAsync.when(
-                data: (workspaces) {
-                  if (workspaces.isEmpty) {
-                    return const Center(child: Text('No data. Try adding one offline!'));
-                  }
-                  return ListView.builder(
-                    itemCount: workspaces.length,
-                    itemBuilder: (context, index) {
-                      final workspace = workspaces[index];
-                      return WorkspaceCard(workspace: workspace);
-                    },
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Center(child: Text('Error: $err')),
-              ),
-            ),
+            // // === ဒေတာစာရင်းများအား Stream ဖြင့် ပြသသည့်အပိုင်း ===
+            // Expanded(
+            //   child: workspacesAsync.when(
+            //     data: (workspaces) {
+            //       if (workspaces.isEmpty) {
+            //         return const Center(child: Text('No data. Try adding one offline!'));
+            //       }
+            //       return ListView.builder(
+            //         itemCount: workspaces.length,
+            //         itemBuilder: (context, index) {
+            //           final workspace = workspaces[index];
+            //           return WorkspaceCard(workspace: workspace);
+            //         },
+            //       );
+            //     },
+            //     loading: () => const Center(child: CircularProgressIndicator()),
+            //     error: (err, stack) => Center(child: Text('Error: $err')),
+            //   ),
+            // ),
           ],
         ),
       ),

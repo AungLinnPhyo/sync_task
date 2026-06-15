@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/navigation_provider.dart';
 import 'sync_test_screen.dart';
 import 'outbox_screen.dart';
+import 'server_data_screen.dart';
 
 class MainNavigationScreen extends ConsumerWidget {
   const MainNavigationScreen({super.key});
@@ -12,7 +13,7 @@ class MainNavigationScreen extends ConsumerWidget {
     final currentIndex = ref.watch(navigationIndexProvider);
 
     // Define the list of screens
-    final List<Widget> screens = [const SyncTestScreen(), const OutboxScreen()];
+    final List<Widget> screens = [const SyncTestScreen(), const ServerDataScreen(), const OutboxScreen()];
 
     return Scaffold(
       body: IndexedStack(index: currentIndex, children: screens),
@@ -25,6 +26,7 @@ class MainNavigationScreen extends ConsumerWidget {
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.flash_on), label: 'Tester', tooltip: 'Sync Test Screen'),
+          BottomNavigationBarItem(icon: Icon(Icons.cloud_download), label: 'Server Data', tooltip: 'Fetch from API'),
           BottomNavigationBarItem(icon: Icon(Icons.sync_alt), label: 'Outbox', tooltip: 'Sync Queue Status'),
         ],
       ),

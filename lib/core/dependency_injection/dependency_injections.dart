@@ -12,6 +12,7 @@ import '../../features/sync_task/data/repositories/outbox_repository_impl.dart';
 import '../../features/sync_task/data/repositories/reference_repository_impl.dart';
 import '../../features/sync_task/domain/repositories/worksapce_repository.dart';
 import '../../features/sync_task/domain/usecases/project_usecase.dart';
+import '../../features/sync_task/data/data_sources/remotes/workspace_remote_data_source.dart';
 import '../database/app_database.dart';
 import '../../features/sync_task/data/processors/create_project_processor.dart';
 import '../../features/sync_task/data/processors/create_workspace_processor.dart';
@@ -39,6 +40,8 @@ final projectDaoProvider = Provider<ProjectDao>((ref) => ProjectDao(ref.watch(da
 final outboxDaoProvider = Provider<OutboxDao>((ref) => OutboxDao(ref.watch(databaseProvider)));
 final referenceDaoProvider = Provider<ReferenceDao>((ref) => ReferenceDao(ref.watch(databaseProvider)));
 
+final workspaceRemoteDataSourceProvider = Provider<WorkspaceRemoteDataSource>((ref) => WorkspaceRemoteDataSource(ref.watch(dioProvider)));
+
 // 3. Core Offline Repositories Providers
 final localReferenceRepositoryProvider = Provider<LocalReferenceRepository>((ref) {
   return ReferenceRepositoryImpl(ref.watch(referenceDaoProvider));
@@ -49,7 +52,7 @@ final offlineOutboxRepositoryProvider = Provider<OfflineOutboxRepository>((ref) 
 
 // 4. Feature Domain Repositories Providers
 final workspaceRepositoryProvider = Provider<WorkspaceRepository>((ref) {
-  return WorkspaceRepositoryImpl(ref.watch(workspaceDaoProvider), ref.watch(outboxDaoProvider), ref.watch(referenceDaoProvider));
+  return WorkspaceRepositoryImpl(ref.watch(workspaceDaoProvider), ref.watch(outboxDaoProvider), ref.watch(referenceDaoProvider), ref.watch(workspaceRemoteDataSourceProvider));
 });
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
   return ProjectRepositoryImpl(ref.watch(projectDaoProvider), ref.watch(outboxDaoProvider));

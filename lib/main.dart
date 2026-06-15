@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:synctask/features/sync_task/presentation/screens/main_navigation_screen.dart';
 
 import 'core/dependency_injection/dependency_injections.dart';
-import 'features/sync_task/presentation/screens/sync_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
