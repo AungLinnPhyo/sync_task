@@ -1,19 +1,18 @@
+// data/models/project_model.dart
 import '../../domain/entities/project_entity.dart';
 
-class ProjectModel {
-  final int id;
-  final int workspaceId;
-  final String name;
-  final String createdAt;
+class ProjectModel extends ProjectEntity {
+  ProjectModel({required super.localId, super.serverId, required super.localWorkspaceId, required super.name, required super.createdAt});
 
-  ProjectModel({required this.id, required this.workspaceId, required this.name, required this.createdAt});
-
+  // 📥 ဆာဗာမှလာသော JSON အား Model ပြောင်းရန်
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
-    return ProjectModel(id: json['id'] as int, workspaceId: json['workspaceId'] as int, name: json['name'] as String, createdAt: json['createdAt'] as String);
-  }
-
-  // Model မှ Domain Entity သို့ ပြောင်းလဲခြင်း
-  ProjectEntity toEntity() {
-    return ProjectEntity(id: id.toString(), workspaceId: workspaceId.toString(), name: name, createdAt: DateTime.parse(createdAt));
+    return ProjectModel(
+      // 🎯 0 အစား JSON ထဲတွင် ပါလာသော ID များကို ပြောင်းလဲထည့်သွင်းပေးရန် လိုအပ်သည်
+      localId: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      localWorkspaceId: int.tryParse(json['workspaceId']?.toString() ?? '') ?? 0,
+      serverId: json['id']?.toString(),
+      name: json['name'] as String,
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
+    );
   }
 }

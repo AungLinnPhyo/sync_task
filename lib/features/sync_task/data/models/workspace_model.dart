@@ -1,31 +1,26 @@
 import '../../domain/entities/workspace_entity.dart';
 
-class WorkspaceModel {
-  final int id; // 💡 ဆာဗာဘက်က Auto-increment Integer (101, 102) ပြန်ပေးမည်
-  final String name;
-  final String createdAt;
-
+class WorkspaceModel extends WorkspaceEntity {
   WorkspaceModel({
-    required this.id,
-    required this.name,
-    required this.createdAt,
+    required super.localId,
+    super.serverId, // 🎯 Entity ထဲမှာ optional ပေးထားရင် super.serverId ကို required ဖြုတ်ပေးပါ
+    required super.name,
+    required super.createdAt,
   });
 
   // 📥 ဆာဗာမှလာသော JSON အား Model ပြောင်းရန်
   factory WorkspaceModel.fromJson(Map<String, dynamic> json) {
     return WorkspaceModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      createdAt: json['createdAt'] as String,
-    );
-  }
+      // 🎯 Server ID သည် numeric ဖြစ်ပါက localId အဖြစ်ပါ တစ်ခါတည်း သတ်မှတ်ပေးခြင်းဖြင့် Foreign Key ချိတ်ဆက်မှုကို လွယ်ကူစေသည်
+      localId: int.tryParse(json['id']?.toString() ?? '') ?? 0,
 
-  // 🔄 Model မှ ကျွန်ုပ်တို့ App ထဲတွင်သုံးမည့် Entity သို့ ပြောင်းလဲပေးမည့် Method
-  WorkspaceEntity toEntity() {
-    return WorkspaceEntity(
-      id: id.toString(), // 💡 int ID အား String အဖြစ်သို့ ဤနေရာတွင် ပြောင်းလဲပေးလိုက်သည်
-      name: name,
-      createdAt: DateTime.parse(createdAt),
+      // 🎯 ဆာဗာဆီကလာတဲ့ json['id'] (String/UUID) ဟာ ကျွန်ုပ်တို့ App အတွက် serverId ဖြစ်ပါတယ်
+      serverId: json['id']?.toString(),
+
+      name: json['name'] as String,
+
+      // DateTime သို့ ပြောင်းလဲခြင်းကိုပါ တစ်ခါတည်း Safe ဖြစ်အောင် စစ်ပေးထားပါတယ်
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
     );
   }
 }

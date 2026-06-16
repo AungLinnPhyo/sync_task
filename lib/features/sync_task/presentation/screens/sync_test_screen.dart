@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workspace_provider.dart';
-import '../widgets/workspace_card.dart';
 
 class SyncTestScreen extends ConsumerStatefulWidget {
   const SyncTestScreen({super.key});
@@ -27,7 +26,7 @@ class _SyncTestScreenState extends ConsumerState<SyncTestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final workspacesAsync = ref.watch(workspacesStreamProvider);
+    // final workspacesAsync = ref.watch(workspacesStreamProvider);
     final workspaceController = ref.watch(workspaceControllerProvider);
 
     return Scaffold(

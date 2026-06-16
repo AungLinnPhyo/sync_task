@@ -1,56 +1,63 @@
+import 'dart:developer';
 import 'package:core_offline/core_offline.dart';
 import 'package:core_offline/exceptions/sync_exceptions.dart';
 import 'package:dio/dio.dart';
-import '../data_sources/local/daos/reference_dao.dart';
+import '../data_sources/local/daos/project_dao.dart';
+import '../data_sources/local/daos/workspace_dao.dart';
 
 class CreateProjectProcessor implements OutboxActionProcessor {
   final Dio _dio;
-  final ReferenceDao _referenceDao;
+  final WorkspaceDao _workspaceDao;
+  final ProjectDao _projectDao;
 
-  CreateProjectProcessor(this._dio, this._referenceDao);
+  CreateProjectProcessor(this._dio, this._workspaceDao, this._projectDao);
 
   @override
-  // သင့် Outbox Engine က ခွဲခြားသိမြင်နိုင်ရန် Action Name သတ်မှတ်ခြင်း
   String get actionType => 'createProject';
 
   @override
   Future<Map<String, dynamic>?> process(OfflineOutboxItem item) async {
     try {
-      // 1. သင့် Template ရဲ့ Helper ကိုသုံးပြီး Payload အား ပြုပြင်နိုင်ရန် Map အဖြစ် ယူသည်
       final Map<String, dynamic> payload = item.payloadAsMap;
 
-      // 2. 🎯 Runtime ID Resolution အပိုင်း
-      // Payload ထဲတွင် ပါဝင်လာသော workspaceId (ယာယီ UUID ဖြစ်နိုင်ခြေရှိသော ID) အား ထုတ်ယူခြင်း
-      final String? currentWorkspaceId = payload['workspaceId']?.toString();
+      final int localId = int.tryParse(payload['localId'].toString()) ?? 0;
+      final int localWorkspaceId = int.tryParse(payload['localWorkspaceId'].toString()) ?? 0;
+      final String name = payload['name']?.toString() ?? '';
 
-      if (currentWorkspaceId != null) {
-        // Mapping Table (ReferenceDao) ထဲတွင် ဤ UUID အတွက် Server ID ရှိ၊ မရှိ စစ်ဆေးသည်
-        final String? realServerWorkspaceId = await _referenceDao.getServerId(currentWorkspaceId);
+      log('🔄 [Sync Engine] Processing Project: localId=$localId, name=$name');
 
-        if (realServerWorkspaceId != null) {
-          // 💡 ရှိပါက ဆာဗာသို့ မပို့မီ ယာယီ UUID နေရာတွင် တကယ့် Server ID ဖြင့် အစားထိုးပစ်လိုက်သည်
-          payload['workspaceId'] = realServerWorkspaceId;
-        }
+      // ၁။ Workspace ၏ Server ID အစစ်ကို ရှာသည်
+      final parentWorkspace = await _workspaceDao.getWorkspaceById(localWorkspaceId);
+      final String? serverWorkspaceId = parentWorkspace?.serverId;
+
+      if (serverWorkspaceId == null) {
+        log('⏳ [Sync Dependency] Parent Workspace (Local ID: $localWorkspaceId) server ID not found yet. Retrying later...');
+        throw SyncNetworkException("Parent Workspace server ID not found yet. Retrying later...");
       }
 
-      // 3. Request Header တွင် Idempotency Key ထည့်သွင်းခြင်း
-      final options = Options(
-        headers: {
-          if (item.clientReferenceId != null) 'X-Idempotency-Key': item.clientReferenceId,
-        },
-      );
+      final options = Options(headers: {
+        if (item.clientReferenceId != null) 'X-Idempotency-Key': item.clientReferenceId
+      });
 
-      // 4. Local Server ဆီသို့ လှမ်းပို့ခြင်း
+      // ၂။ ဆာဗာဆီသို့ ပို့ဆောင်ခြင်း
       final response = await _dio.post(
-        item.url, // '/api/projects'
-        data: payload,
+        item.url,
+        data: {
+          "workspaceId": int.tryParse(serverWorkspaceId) ?? serverWorkspaceId,
+          "name": name,
+        },
         options: options,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
-        // 💡 သင့် Engine ၏ လိုင်းနံပါတ် ၁၃၈ အရ ၎င်းသည် ဤ Project ၏ Real ID ကိုလည်း
-        // Mapping Table ထဲသို့ အလိုအလျောက် ထပ်မံသိမ်းဆည်းပေးသွားမည် ဖြစ်သည်။
+        final data = response.data as Map<String, dynamic>;
+
+        if (data['id'] != null) {
+          final serverProjectId = data['id'].toString();
+          await _projectDao.updateServerId(localId, serverProjectId);
+          log('🎯 [Dual-ID] Linked Project Local ID: $localId to Server ID: $serverProjectId');
+        }
+        return data;
       }
 
       // Server Error handling
@@ -62,22 +69,31 @@ class CreateProjectProcessor implements OutboxActionProcessor {
         throw SyncNetworkException("Network Error: ${response.statusCode}");
       }
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.message!.contains('SocketException')) {
-        throw SyncNetworkException("Network Error"); // Engine မှ Exponential Delay ဖြင့် ပြန်ကြိုးစားရန်
+      // 🚨 [ဒီနေရာက အခုအသစ်ဖြည့်လိုက်သော အရေးကြီးဆုံးအပိုင်းဖြစ်သည်]
+      log('❌ [DioException caught in Project Processor]');
+      log('👉 Target URL: ${item.url}');
+      log('👉 Error Type: ${e.type}');
+      log('👉 Error Message: ${e.message}');
+      log('👉 Server Response Data: ${e.response?.data}');
+      log('👉 Server Response Status: ${e.response?.statusCode}');
+
+      if (e.type == DioExceptionType.connectionTimeout || 
+          e.type == DioExceptionType.receiveTimeout || 
+          (e.message != null && e.message!.contains('SocketException'))) {
+        throw SyncNetworkException("Network Error"); 
       }
-      throw SyncServerException("Server Error: $e");
+      throw SyncServerException("Dio Server Error: $e");
+    } catch (e, stackTrace) {
+      log('❌ [Fatal Error] CreateProjectProcessor တွင် မထင်မှတ်ထားသော အမှားဖြစ်ပွားပါသည်: $e', stackTrace: stackTrace);
+      if (e is SyncNetworkException || e is SyncServerException || e is SyncConflictException) {
+        rethrow;
+      }
+      throw SyncServerException("Internal Processor Crash: $e");
     }
   }
 
   @override
-  Future<void> onConflict(Object error, OfflineOutboxItem item) async {
-    // Conflict ဖြစ်ပါက လုပ်ဆောင်ရန် logic
-  }
-
+  Future<void> onConflict(Object error, OfflineOutboxItem item) async {}
   @override
-  Future<void> onFailure(Object error, OfflineOutboxItem item, int currentRetries) async {
-    // လုံးဝ ပို့မရတော့သည့်အခါ လုပ်ဆောင်ရန် logic
-  }
+  Future<void> onFailure(Object error, OfflineOutboxItem item, int currentRetries) async {}
 }

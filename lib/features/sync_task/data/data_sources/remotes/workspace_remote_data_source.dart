@@ -20,6 +20,8 @@ class WorkspaceRemoteDataSource {
         dynamic responseData = response.data;
         List<dynamic> list = [];
 
+        log('API Response: $responseData');
+
         // 💡 Server က List တိုက်ရိုက်မပြန်ဘဲ Map နဲ့ ထုပ်ပေးထားရင် (ဥပမာ- {"workspaces": [...]})
         if (responseData is Map && responseData.containsKey('workspaces')) {
           list = responseData['workspaces'] as List<dynamic>;

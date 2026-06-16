@@ -8,6 +8,7 @@ import '../../features/sync_task/data/data_sources/local/daos/outbox_dao.dart';
 import '../../features/sync_task/data/data_sources/local/daos/project_dao.dart';
 import '../../features/sync_task/data/data_sources/local/daos/reference_dao.dart';
 import '../../features/sync_task/data/data_sources/local/daos/workspace_dao.dart';
+import '../../features/sync_task/data/processors/update_workspace_processor.dart';
 import '../../features/sync_task/data/repositories/outbox_repository_impl.dart';
 import '../../features/sync_task/data/repositories/reference_repository_impl.dart';
 import '../../features/sync_task/domain/repositories/worksapce_repository.dart';
@@ -52,7 +53,7 @@ final offlineOutboxRepositoryProvider = Provider<OfflineOutboxRepository>((ref) 
 
 // 4. Feature Domain Repositories Providers
 final workspaceRepositoryProvider = Provider<WorkspaceRepository>((ref) {
-  return WorkspaceRepositoryImpl(ref.watch(workspaceDaoProvider), ref.watch(outboxDaoProvider), ref.watch(referenceDaoProvider), ref.watch(workspaceRemoteDataSourceProvider));
+  return WorkspaceRepositoryImpl(ref.watch(workspaceDaoProvider), ref.watch(outboxDaoProvider), ref.watch(workspaceRemoteDataSourceProvider));
 });
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
   return ProjectRepositoryImpl(ref.watch(projectDaoProvider), ref.watch(outboxDaoProvider));
@@ -60,10 +61,13 @@ final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
 
 // 5. Sync Processors Providers
 final createWorkspaceProcessorProvider = Provider<CreateWorkspaceProcessor>((ref) {
-  return CreateWorkspaceProcessor(ref.watch(dioProvider), ref.watch(referenceDaoProvider));
+  return CreateWorkspaceProcessor(ref.watch(dioProvider), ref.watch(workspaceDaoProvider));
 });
 final createProjectProcessorProvider = Provider<CreateProjectProcessor>((ref) {
-  return CreateProjectProcessor(ref.watch(dioProvider), ref.watch(referenceDaoProvider));
+  return CreateProjectProcessor(ref.watch(dioProvider), ref.watch(workspaceDaoProvider), ref.watch(projectDaoProvider));
+});
+final updateWorkspaceProcessorProvider = Provider<UpdateWorkspaceProcessor>((ref) {
+  return UpdateWorkspaceProcessor(ref.watch(dioProvider));
 });
 
 // 🚀 6. Central Offline Sync Engine Provider

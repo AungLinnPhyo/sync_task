@@ -6,4 +6,6 @@ abstract class WorkspaceRepository {
   Future<void> createWorkspace(String name);
 
   Future<void> syncFromRemote();
+
+  Future<void> updateWorkspace(int id, String name);
 }

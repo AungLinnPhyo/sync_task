@@ -13,10 +13,10 @@ class ProjectController extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
   ProjectController(this._ref) : super(const AsyncValue.data(null));
 
-  Future<void> addProject(String name, String workspaceId) async {
+  Future<void> addProject(String name, int workspaceId) async {
     state = const AsyncValue.loading();
     try {
-      await _ref.read(projectUsecaseProvider).createProject(name: name, workspaceId: workspaceId);
+      await _ref.read(projectUsecaseProvider).createProject(name: name, localWorkspaceId: workspaceId);
       state = const AsyncValue.data(null);
       // 🎯 ၂။ [အရေးကြီးဆုံးအဆင့်] ဒေတာသွင်းပြီးသည်နှင့် ချက်ချင်း Sync Engine ကို လှမ်းနှိုးပါ
       _ref.read(offlineSyncEngineProvider).triggerSync();

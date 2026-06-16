@@ -1,11 +1,14 @@
 import 'package:drift/drift.dart';
 
-class ProjectTable extends Table {
-  TextColumn get id => text()();
-  TextColumn get name => text()();
-  TextColumn get workspaceId => text()(); // Parent Table ၏ ID အား ချိတ်ဆက်ခြင်း
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+import 'workspace_table.dart';
 
-  @override
-  Set<Column> get primaryKey => {id};
+class ProjectTable extends Table {
+  // 🏠 ဖုန်းထဲက သီးသန့် Primary Key (Auto-increment Integer)
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  // 🎯 Workspace နှင့် ချိတ်ဆက်မှုကို ဖုန်းထဲက Local ID နှင့်သာ တိုက်ရိုက်ချိတ်မည်
+  IntColumn get workspaceId => integer().references(WorkspaceTable, #id)();
+  // 🌐 ဆာဗာကပေးမည့် Project ID (အော့ဖ်လိုင်းတုန်းက null ဖြစ်နေပြီး Sync အောင်မှ ဝင်မည်)
+  TextColumn get serverId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

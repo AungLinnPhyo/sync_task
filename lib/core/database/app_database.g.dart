@@ -11,12 +11,27 @@ class $WorkspaceTableTable extends WorkspaceTable
   $WorkspaceTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
     'id',
     aliasedName,
     false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -40,7 +55,7 @@ class $WorkspaceTableTable extends WorkspaceTable
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, createdAt];
+  List<GeneratedColumn> get $columns => [id, serverId, name, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -55,8 +70,12 @@ class $WorkspaceTableTable extends WorkspaceTable
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -82,9 +101,13 @@ class $WorkspaceTableTable extends WorkspaceTable
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return WorkspaceTableData(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      ),
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
@@ -104,18 +127,23 @@ class $WorkspaceTableTable extends WorkspaceTable
 
 class WorkspaceTableData extends DataClass
     implements Insertable<WorkspaceTableData> {
-  final String id;
+  final int id;
+  final String? serverId;
   final String name;
   final DateTime createdAt;
   const WorkspaceTableData({
     required this.id,
+    this.serverId,
     required this.name,
     required this.createdAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<String>(serverId);
+    }
     map['name'] = Variable<String>(name);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -124,6 +152,9 @@ class WorkspaceTableData extends DataClass
   WorkspaceTableCompanion toCompanion(bool nullToAbsent) {
     return WorkspaceTableCompanion(
       id: Value(id),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
       name: Value(name),
       createdAt: Value(createdAt),
     );
@@ -135,7 +166,8 @@ class WorkspaceTableData extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return WorkspaceTableData(
-      id: serializer.fromJson<String>(json['id']),
+      id: serializer.fromJson<int>(json['id']),
+      serverId: serializer.fromJson<String?>(json['serverId']),
       name: serializer.fromJson<String>(json['name']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
@@ -144,24 +176,28 @@ class WorkspaceTableData extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
+      'id': serializer.toJson<int>(id),
+      'serverId': serializer.toJson<String?>(serverId),
       'name': serializer.toJson<String>(name),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
   WorkspaceTableData copyWith({
-    String? id,
+    int? id,
+    Value<String?> serverId = const Value.absent(),
     String? name,
     DateTime? createdAt,
   }) => WorkspaceTableData(
     id: id ?? this.id,
+    serverId: serverId.present ? serverId.value : this.serverId,
     name: name ?? this.name,
     createdAt: createdAt ?? this.createdAt,
   );
   WorkspaceTableData copyWithCompanion(WorkspaceTableCompanion data) {
     return WorkspaceTableData(
       id: data.id.present ? data.id.value : this.id,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
       name: data.name.present ? data.name.value : this.name,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -171,6 +207,7 @@ class WorkspaceTableData extends DataClass
   String toString() {
     return (StringBuffer('WorkspaceTableData(')
           ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
           ..write('name: $name, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -178,59 +215,59 @@ class WorkspaceTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, name, createdAt);
+  int get hashCode => Object.hash(id, serverId, name, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is WorkspaceTableData &&
           other.id == this.id &&
+          other.serverId == this.serverId &&
           other.name == this.name &&
           other.createdAt == this.createdAt);
 }
 
 class WorkspaceTableCompanion extends UpdateCompanion<WorkspaceTableData> {
-  final Value<String> id;
+  final Value<int> id;
+  final Value<String?> serverId;
   final Value<String> name;
   final Value<DateTime> createdAt;
-  final Value<int> rowid;
   const WorkspaceTableCompanion({
     this.id = const Value.absent(),
+    this.serverId = const Value.absent(),
     this.name = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.rowid = const Value.absent(),
   });
   WorkspaceTableCompanion.insert({
-    required String id,
+    this.id = const Value.absent(),
+    this.serverId = const Value.absent(),
     required String name,
     this.createdAt = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name);
+  }) : name = Value(name);
   static Insertable<WorkspaceTableData> custom({
-    Expression<String>? id,
+    Expression<int>? id,
+    Expression<String>? serverId,
     Expression<String>? name,
     Expression<DateTime>? createdAt,
-    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (serverId != null) 'server_id': serverId,
       if (name != null) 'name': name,
       if (createdAt != null) 'created_at': createdAt,
-      if (rowid != null) 'rowid': rowid,
     });
   }
 
   WorkspaceTableCompanion copyWith({
-    Value<String>? id,
+    Value<int>? id,
+    Value<String?>? serverId,
     Value<String>? name,
     Value<DateTime>? createdAt,
-    Value<int>? rowid,
   }) {
     return WorkspaceTableCompanion(
       id: id ?? this.id,
+      serverId: serverId ?? this.serverId,
       name: name ?? this.name,
       createdAt: createdAt ?? this.createdAt,
-      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -238,16 +275,16 @@ class WorkspaceTableCompanion extends UpdateCompanion<WorkspaceTableData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<String>(id.value);
+      map['id'] = Variable<int>(id.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -256,9 +293,9 @@ class WorkspaceTableCompanion extends UpdateCompanion<WorkspaceTableData> {
   String toString() {
     return (StringBuffer('WorkspaceTableCompanion(')
           ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
           ..write('name: $name, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('rowid: $rowid')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -272,12 +309,16 @@ class $ProjectTableTable extends ProjectTable
   $ProjectTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
     'id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
   );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
@@ -292,12 +333,26 @@ class $ProjectTableTable extends ProjectTable
     'workspaceId',
   );
   @override
-  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+  late final GeneratedColumn<int> workspaceId = GeneratedColumn<int>(
     'workspace_id',
     aliasedName,
     false,
-    type: DriftSqlType.string,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES workspace_table (id)',
+    ),
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -312,7 +367,13 @@ class $ProjectTableTable extends ProjectTable
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, workspaceId, createdAt];
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    workspaceId,
+    serverId,
+    createdAt,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -327,8 +388,6 @@ class $ProjectTableTable extends ProjectTable
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -349,6 +408,12 @@ class $ProjectTableTable extends ProjectTable
     } else if (isInserting) {
       context.missing(_workspaceIdMeta);
     }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -365,7 +430,7 @@ class $ProjectTableTable extends ProjectTable
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return ProjectTableData(
       id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
       name: attachedDatabase.typeMapping.read(
@@ -373,9 +438,13 @@ class $ProjectTableTable extends ProjectTable
         data['${effectivePrefix}name'],
       )!,
       workspaceId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
+        DriftSqlType.int,
         data['${effectivePrefix}workspace_id'],
       )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -391,22 +460,27 @@ class $ProjectTableTable extends ProjectTable
 
 class ProjectTableData extends DataClass
     implements Insertable<ProjectTableData> {
-  final String id;
+  final int id;
   final String name;
-  final String workspaceId;
+  final int workspaceId;
+  final String? serverId;
   final DateTime createdAt;
   const ProjectTableData({
     required this.id,
     required this.name,
     required this.workspaceId,
+    this.serverId,
     required this.createdAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
+    map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
-    map['workspace_id'] = Variable<String>(workspaceId);
+    map['workspace_id'] = Variable<int>(workspaceId);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<String>(serverId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -416,6 +490,9 @@ class ProjectTableData extends DataClass
       id: Value(id),
       name: Value(name),
       workspaceId: Value(workspaceId),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
       createdAt: Value(createdAt),
     );
   }
@@ -426,9 +503,10 @@ class ProjectTableData extends DataClass
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ProjectTableData(
-      id: serializer.fromJson<String>(json['id']),
+      id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      workspaceId: serializer.fromJson<int>(json['workspaceId']),
+      serverId: serializer.fromJson<String?>(json['serverId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -436,22 +514,25 @@ class ProjectTableData extends DataClass
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
+      'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
-      'workspaceId': serializer.toJson<String>(workspaceId),
+      'workspaceId': serializer.toJson<int>(workspaceId),
+      'serverId': serializer.toJson<String?>(serverId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
   ProjectTableData copyWith({
-    String? id,
+    int? id,
     String? name,
-    String? workspaceId,
+    int? workspaceId,
+    Value<String?> serverId = const Value.absent(),
     DateTime? createdAt,
   }) => ProjectTableData(
     id: id ?? this.id,
     name: name ?? this.name,
     workspaceId: workspaceId ?? this.workspaceId,
+    serverId: serverId.present ? serverId.value : this.serverId,
     createdAt: createdAt ?? this.createdAt,
   );
   ProjectTableData copyWithCompanion(ProjectTableCompanion data) {
@@ -461,6 +542,7 @@ class ProjectTableData extends DataClass
       workspaceId: data.workspaceId.present
           ? data.workspaceId.value
           : this.workspaceId,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -471,13 +553,14 @@ class ProjectTableData extends DataClass
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('workspaceId: $workspaceId, ')
+          ..write('serverId: $serverId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, workspaceId, createdAt);
+  int get hashCode => Object.hash(id, name, workspaceId, serverId, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -485,60 +568,60 @@ class ProjectTableData extends DataClass
           other.id == this.id &&
           other.name == this.name &&
           other.workspaceId == this.workspaceId &&
+          other.serverId == this.serverId &&
           other.createdAt == this.createdAt);
 }
 
 class ProjectTableCompanion extends UpdateCompanion<ProjectTableData> {
-  final Value<String> id;
+  final Value<int> id;
   final Value<String> name;
-  final Value<String> workspaceId;
+  final Value<int> workspaceId;
+  final Value<String?> serverId;
   final Value<DateTime> createdAt;
-  final Value<int> rowid;
   const ProjectTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.workspaceId = const Value.absent(),
+    this.serverId = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.rowid = const Value.absent(),
   });
   ProjectTableCompanion.insert({
-    required String id,
+    this.id = const Value.absent(),
     required String name,
-    required String workspaceId,
+    required int workspaceId,
+    this.serverId = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       name = Value(name),
+  }) : name = Value(name),
        workspaceId = Value(workspaceId);
   static Insertable<ProjectTableData> custom({
-    Expression<String>? id,
+    Expression<int>? id,
     Expression<String>? name,
-    Expression<String>? workspaceId,
+    Expression<int>? workspaceId,
+    Expression<String>? serverId,
     Expression<DateTime>? createdAt,
-    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (workspaceId != null) 'workspace_id': workspaceId,
+      if (serverId != null) 'server_id': serverId,
       if (createdAt != null) 'created_at': createdAt,
-      if (rowid != null) 'rowid': rowid,
     });
   }
 
   ProjectTableCompanion copyWith({
-    Value<String>? id,
+    Value<int>? id,
     Value<String>? name,
-    Value<String>? workspaceId,
+    Value<int>? workspaceId,
+    Value<String?>? serverId,
     Value<DateTime>? createdAt,
-    Value<int>? rowid,
   }) {
     return ProjectTableCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       workspaceId: workspaceId ?? this.workspaceId,
+      serverId: serverId ?? this.serverId,
       createdAt: createdAt ?? this.createdAt,
-      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -546,19 +629,19 @@ class ProjectTableCompanion extends UpdateCompanion<ProjectTableData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<String>(id.value);
+      map['id'] = Variable<int>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
     if (workspaceId.present) {
-      map['workspace_id'] = Variable<String>(workspaceId.value);
+      map['workspace_id'] = Variable<int>(workspaceId.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -569,8 +652,8 @@ class ProjectTableCompanion extends UpdateCompanion<ProjectTableData> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('workspaceId: $workspaceId, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('rowid: $rowid')
+          ..write('serverId: $serverId, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -2046,18 +2129,53 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 
 typedef $$WorkspaceTableTableCreateCompanionBuilder =
     WorkspaceTableCompanion Function({
-      required String id,
+      Value<int> id,
+      Value<String?> serverId,
       required String name,
       Value<DateTime> createdAt,
-      Value<int> rowid,
     });
 typedef $$WorkspaceTableTableUpdateCompanionBuilder =
     WorkspaceTableCompanion Function({
-      Value<String> id,
+      Value<int> id,
+      Value<String?> serverId,
       Value<String> name,
       Value<DateTime> createdAt,
-      Value<int> rowid,
     });
+
+final class $$WorkspaceTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $WorkspaceTableTable,
+          WorkspaceTableData
+        > {
+  $$WorkspaceTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$ProjectTableTable, List<ProjectTableData>>
+  _projectTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.projectTable,
+    aliasName: $_aliasNameGenerator(
+      db.workspaceTable.id,
+      db.projectTable.workspaceId,
+    ),
+  );
+
+  $$ProjectTableTableProcessedTableManager get projectTableRefs {
+    final manager = $$ProjectTableTableTableManager(
+      $_db,
+      $_db.projectTable,
+    ).filter((f) => f.workspaceId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_projectTableRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
 
 class $$WorkspaceTableTableFilterComposer
     extends Composer<_$AppDatabase, $WorkspaceTableTable> {
@@ -2068,8 +2186,13 @@ class $$WorkspaceTableTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
+  ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2082,6 +2205,31 @@ class $$WorkspaceTableTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> projectTableRefs(
+    Expression<bool> Function($$ProjectTableTableFilterComposer f) f,
+  ) {
+    final $$ProjectTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.projectTable,
+      getReferencedColumn: (t) => t.workspaceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectTableTableFilterComposer(
+            $db: $db,
+            $table: $db.projectTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$WorkspaceTableTableOrderingComposer
@@ -2093,8 +2241,13 @@ class $$WorkspaceTableTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
+  ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2118,14 +2271,42 @@ class $$WorkspaceTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
+  GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> projectTableRefs<T extends Object>(
+    Expression<T> Function($$ProjectTableTableAnnotationComposer a) f,
+  ) {
+    final $$ProjectTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.projectTable,
+      getReferencedColumn: (t) => t.workspaceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ProjectTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.projectTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$WorkspaceTableTableTableManager
@@ -2139,16 +2320,9 @@ class $$WorkspaceTableTableTableManager
           $$WorkspaceTableTableAnnotationComposer,
           $$WorkspaceTableTableCreateCompanionBuilder,
           $$WorkspaceTableTableUpdateCompanionBuilder,
-          (
-            WorkspaceTableData,
-            BaseReferences<
-              _$AppDatabase,
-              $WorkspaceTableTable,
-              WorkspaceTableData
-            >,
-          ),
+          (WorkspaceTableData, $$WorkspaceTableTableReferences),
           WorkspaceTableData,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool projectTableRefs})
         > {
   $$WorkspaceTableTableTableManager(
     _$AppDatabase db,
@@ -2165,32 +2339,68 @@ class $$WorkspaceTableTableTableManager
               $$WorkspaceTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<String> id = const Value.absent(),
+                Value<int> id = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
               }) => WorkspaceTableCompanion(
                 id: id,
+                serverId: serverId,
                 name: name,
                 createdAt: createdAt,
-                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<int> id = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
                 required String name,
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
               }) => WorkspaceTableCompanion.insert(
                 id: id,
+                serverId: serverId,
                 name: name,
                 createdAt: createdAt,
-                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$WorkspaceTableTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({projectTableRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (projectTableRefs) db.projectTable],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (projectTableRefs)
+                    await $_getPrefetchedData<
+                      WorkspaceTableData,
+                      $WorkspaceTableTable,
+                      ProjectTableData
+                    >(
+                      currentTable: table,
+                      referencedTable: $$WorkspaceTableTableReferences
+                          ._projectTableRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$WorkspaceTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).projectTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.workspaceId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -2205,29 +2415,51 @@ typedef $$WorkspaceTableTableProcessedTableManager =
       $$WorkspaceTableTableAnnotationComposer,
       $$WorkspaceTableTableCreateCompanionBuilder,
       $$WorkspaceTableTableUpdateCompanionBuilder,
-      (
-        WorkspaceTableData,
-        BaseReferences<_$AppDatabase, $WorkspaceTableTable, WorkspaceTableData>,
-      ),
+      (WorkspaceTableData, $$WorkspaceTableTableReferences),
       WorkspaceTableData,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool projectTableRefs})
     >;
 typedef $$ProjectTableTableCreateCompanionBuilder =
     ProjectTableCompanion Function({
-      required String id,
+      Value<int> id,
       required String name,
-      required String workspaceId,
+      required int workspaceId,
+      Value<String?> serverId,
       Value<DateTime> createdAt,
-      Value<int> rowid,
     });
 typedef $$ProjectTableTableUpdateCompanionBuilder =
     ProjectTableCompanion Function({
-      Value<String> id,
+      Value<int> id,
       Value<String> name,
-      Value<String> workspaceId,
+      Value<int> workspaceId,
+      Value<String?> serverId,
       Value<DateTime> createdAt,
-      Value<int> rowid,
     });
+
+final class $$ProjectTableTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $ProjectTableTable, ProjectTableData> {
+  $$ProjectTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $WorkspaceTableTable _workspaceIdTable(_$AppDatabase db) =>
+      db.workspaceTable.createAlias(
+        $_aliasNameGenerator(db.projectTable.workspaceId, db.workspaceTable.id),
+      );
+
+  $$WorkspaceTableTableProcessedTableManager get workspaceId {
+    final $_column = $_itemColumn<int>('workspace_id')!;
+
+    final manager = $$WorkspaceTableTableTableManager(
+      $_db,
+      $_db.workspaceTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_workspaceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
 
 class $$ProjectTableTableFilterComposer
     extends Composer<_$AppDatabase, $ProjectTableTable> {
@@ -2238,7 +2470,7 @@ class $$ProjectTableTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get id => $composableBuilder(
+  ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
   );
@@ -2248,8 +2480,8 @@ class $$ProjectTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get workspaceId => $composableBuilder(
-    column: $table.workspaceId,
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2257,6 +2489,29 @@ class $$ProjectTableTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$WorkspaceTableTableFilterComposer get workspaceId {
+    final $$WorkspaceTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workspaceId,
+      referencedTable: $db.workspaceTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkspaceTableTableFilterComposer(
+            $db: $db,
+            $table: $db.workspaceTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ProjectTableTableOrderingComposer
@@ -2268,7 +2523,7 @@ class $$ProjectTableTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get id => $composableBuilder(
+  ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
   );
@@ -2278,8 +2533,8 @@ class $$ProjectTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get workspaceId => $composableBuilder(
-    column: $table.workspaceId,
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2287,6 +2542,29 @@ class $$ProjectTableTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$WorkspaceTableTableOrderingComposer get workspaceId {
+    final $$WorkspaceTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workspaceId,
+      referencedTable: $db.workspaceTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkspaceTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.workspaceTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ProjectTableTableAnnotationComposer
@@ -2298,19 +2576,40 @@ class $$ProjectTableTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get id =>
+  GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get workspaceId => $composableBuilder(
-    column: $table.workspaceId,
-    builder: (column) => column,
-  );
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$WorkspaceTableTableAnnotationComposer get workspaceId {
+    final $$WorkspaceTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.workspaceId,
+      referencedTable: $db.workspaceTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WorkspaceTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.workspaceTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ProjectTableTableTableManager
@@ -2324,12 +2623,9 @@ class $$ProjectTableTableTableManager
           $$ProjectTableTableAnnotationComposer,
           $$ProjectTableTableCreateCompanionBuilder,
           $$ProjectTableTableUpdateCompanionBuilder,
-          (
-            ProjectTableData,
-            BaseReferences<_$AppDatabase, $ProjectTableTable, ProjectTableData>,
-          ),
+          (ProjectTableData, $$ProjectTableTableReferences),
           ProjectTableData,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool workspaceId})
         > {
   $$ProjectTableTableTableManager(_$AppDatabase db, $ProjectTableTable table)
     : super(
@@ -2344,36 +2640,81 @@ class $$ProjectTableTableTableManager
               $$ProjectTableTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
-                Value<String> id = const Value.absent(),
+                Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String> workspaceId = const Value.absent(),
+                Value<int> workspaceId = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
               }) => ProjectTableCompanion(
                 id: id,
                 name: name,
                 workspaceId: workspaceId,
+                serverId: serverId,
                 createdAt: createdAt,
-                rowid: rowid,
               ),
           createCompanionCallback:
               ({
-                required String id,
+                Value<int> id = const Value.absent(),
                 required String name,
-                required String workspaceId,
+                required int workspaceId,
+                Value<String?> serverId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
               }) => ProjectTableCompanion.insert(
                 id: id,
                 name: name,
                 workspaceId: workspaceId,
+                serverId: serverId,
                 createdAt: createdAt,
-                rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ProjectTableTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({workspaceId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (workspaceId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.workspaceId,
+                                referencedTable: $$ProjectTableTableReferences
+                                    ._workspaceIdTable(db),
+                                referencedColumn: $$ProjectTableTableReferences
+                                    ._workspaceIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -2388,12 +2729,9 @@ typedef $$ProjectTableTableProcessedTableManager =
       $$ProjectTableTableAnnotationComposer,
       $$ProjectTableTableCreateCompanionBuilder,
       $$ProjectTableTableUpdateCompanionBuilder,
-      (
-        ProjectTableData,
-        BaseReferences<_$AppDatabase, $ProjectTableTable, ProjectTableData>,
-      ),
+      (ProjectTableData, $$ProjectTableTableReferences),
       ProjectTableData,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool workspaceId})
     >;
 typedef $$TaskTableTableCreateCompanionBuilder =
     TaskTableCompanion Function({

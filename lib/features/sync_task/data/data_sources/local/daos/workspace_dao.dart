@@ -10,13 +10,23 @@ class WorkspaceDao extends DatabaseAccessor<AppDatabase> with _$WorkspaceDaoMixi
 
   Future<List<WorkspaceTableData>> getAllWorkspaces() => select(workspaceTable).get();
 
+  // stream UI
   Stream<List<WorkspaceTableData>> watchAllWorkspaces() => select(workspaceTable).watch();
 
-  Future<void> insertWorkspace(WorkspaceTableCompanion workspace) => into(workspaceTable).insertOnConflictUpdate(workspace);
+  // data သိမ်းရန်
+  Future<int> insertWorkspace(WorkspaceTableCompanion workspace) => into(workspaceTable).insertOnConflictUpdate(workspace);
 
-  Future<WorkspaceTableData?> getWorkspaceById(String id) => (select(workspaceTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+  Future<WorkspaceTableData?> getWorkspaceById(int id) => (select(workspaceTable)..where((t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<void> deleteWorkspace(String id) => (delete(workspaceTable)..where((t) => t.id.equals(id))).go();
+  Future<void> updateWorkspaceLocal(int id, String name) async => await (update(workspaceTable)..where((t) => t.id.equals(id))).write(WorkspaceTableCompanion(name: Value(name)));
+
+  Future<void> deleteWorkspace(int id) => (delete(workspaceTable)..where((t) => t.id.equals(id))).go();
+
+
+  Future<bool> updateServerId(int localId, String serverId) async {
+    await (update(workspaceTable)..where((t) => t.id.equals(localId))).write(WorkspaceTableCompanion(serverId: Value(serverId)));
+    return true;
+  }
 
   Future<void> clearAll() => delete(workspaceTable).go();
 }

@@ -47,6 +47,7 @@ class ServerDataScreen extends ConsumerWidget {
               final workspace = workspaces[index];
               // Reusing WorkspaceCard to show Projects automatically
               return WorkspaceCard(workspace: workspace);
+              // return ListTile(title: Text('📦 Workspace: ${workspace.name}'), subtitle: Text('ID: ${workspace.id}'));
             },
           );
         },

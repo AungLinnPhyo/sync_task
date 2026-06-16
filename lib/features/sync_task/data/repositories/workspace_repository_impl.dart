@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:drift/drift.dart';
@@ -7,63 +8,49 @@ import '../../../../core/database/app_database.dart';
 import '../../domain/entities/workspace_entity.dart';
 import '../../domain/repositories/worksapce_repository.dart';
 import '../data_sources/local/daos/outbox_dao.dart';
-import '../data_sources/local/daos/reference_dao.dart';
 import '../data_sources/local/daos/workspace_dao.dart';
 import '../data_sources/remotes/workspace_remote_data_source.dart';
 
 class WorkspaceRepositoryImpl implements WorkspaceRepository {
-  final WorkspaceDao _localDao; // Data Access Object
+  final WorkspaceDao _localDao;
   final OutboxDao _outboxDao;
-  final ReferenceDao _refDao;
   final WorkspaceRemoteDataSource _remoteDataSource;
   final _uuid = const Uuid();
 
-  WorkspaceRepositoryImpl(this._localDao, this._outboxDao, this._refDao, this._remoteDataSource);
+  WorkspaceRepositoryImpl(this._localDao, this._outboxDao, this._remoteDataSource);
 
   @override
   Future<void> createWorkspace(String name) async {
-    // UI ကနေ ဒေတာအသစ်ဆောက်ခိုင်းလျှင် ချက်ချင်း ယာယီ UUID String ထုတ်သည်
-    final tempId = 'w-${_uuid.v4()}';
+    final idempotencyKey = _uuid.v4();
 
-    // Local Database (Drift) ထဲသို့ ချက်ချင်း အော့ဖ်လိုင်းပြသနိုင်ရန် အရင်သိမ်းသည်
-    await _localDao.insertWorkspace(WorkspaceTableCompanion.insert(id: tempId, name: name, createdAt: Value(DateTime.now())));
+    // 1️⃣ Local DB ထဲသို့ သိမ်းဆည်းပြီး Auto-increment localId ကို ရယူသည်
+    final localId = await _localDao.insertWorkspace(WorkspaceTableCompanion.insert(name: name, createdAt: Value(DateTime.now())));
 
-    //🚨 အရေးကြီးဆုံးအပိုင်း: ဆာဗာသို့ ပို့ရန်အတွက် Outbox Queue ထဲသို့ အလုပ်တစ်ခုအနေဖြင့် ထည့်သွင်းရမည်
+    // 2️⃣ Payload ထဲတွင် localId ကို သေချာပေါက် int အတိုင်း ထည့်သွင်းပေးလိုက်သည်
     await _outboxDao.insertItem(
       OutboxTableCompanion.insert(
         url: 'workspaces',
         method: 'POST',
         actionType: 'createWorkspace',
-        clientReferenceId: Value(tempId), // 💡 X-Idempotency-Key အတွက် ယာယီ UUID အား ထည့်ပေးလိုက်သည်
-        payload: '{"name": "$name"}',
+        clientReferenceId: Value(idempotencyKey),
+        payload: jsonEncode({"localId": localId, "name": name}), // 🎯 တိကျသော Payload
         createdAt: Value(DateTime.now()),
         status: const Value('pending'),
       ),
     );
-
-    // ref.read(offlineSyncEngineProvider).triggerSync();
   }
 
   @override
   Stream<List<WorkspaceEntity>> watchWorkspaces() {
-    // ၁။ ဝင်လာမည့် ဒေတာများကို ကွန်ပေါင်း (Combine) လုပ်ရန် Drift ၏ watch ကို သုံးသည်
-    return _localDao.watchAllWorkspaces().asyncMap((items) async {
-      final List<WorkspaceEntity> entities = [];
-
-      for (final item in items) {
-        // ၂။ Mapping Table ထဲမှာ အဆိုပါ Local ID အတွက် ဆာဗာ ID ရှိ၊ မရှိ လှမ်းစစ်သည်
-        final serverId = await _refDao.getServerId(item.id);
-
-        entities.add(
-          WorkspaceEntity(
-            // 🎯 ဆာဗာ ID ရှိရင် ၁၀၁ ပြမယ်၊ မရှိရင် (အော့ဖ်လိုင်းဖြစ်နေတုန်းဆိုရင်) w-xxx ကိုပဲ ပြထားမယ်
-            id: serverId ?? item.id,
-            name: item.name,
-            createdAt: item.createdAt,
-          ),
+    return _localDao.watchAllWorkspaces().map((items) {
+      return items.map((item) {
+        return WorkspaceEntity(
+          localId: item.id,
+          serverId: item.serverId, // 🎯 အောက်က ပြင်လိုက်သဖြင့် serverId သည် null မဖြစ်တော့ပါ
+          name: item.name,
+          createdAt: item.createdAt,
         );
-      }
-      return entities;
+      }).toList();
     });
   }
 
@@ -71,12 +58,58 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository {
   Future<void> syncFromRemote() async {
     // ၁။ ဆာဗာမှ ဒေတာများကို လှမ်းယူသည်
     final remoteWorkspaces = await _remoteDataSource.fetchWorkspaces();
-
     log('📥 Received ${remoteWorkspaces.length} workspaces from server.');
 
-    // ၂။ ရလာသော ဒေတာများကို Local DB ထဲသို့ သိမ်းဆည်းသည် (Cache လုပ်ခြင်း)
-    for (final model in remoteWorkspaces) {
-      await _localDao.insertWorkspace(WorkspaceTableCompanion.insert(id: model.id.toString(), name: model.name, createdAt: Value(DateTime.parse(model.createdAt))));
+    // ၂။ Outbox ထဲတွင် စောင့်ဆိုင်းနေဆဲဖြစ်သော (မပြောင်းလဲရသေးသော) Local Int IDs များကို Payload ထဲမှ ဖတ်ယူမည်
+    final outboxItems = await _outboxDao.getAllPending();
+    final pendingLocalIds = outboxItems
+        .where((item) => item.actionType == 'createWorkspace')
+        .map((item) {
+          try {
+            final payload = jsonDecode(item.payload) as Map<String, dynamic>;
+            return payload['localId'] as int?;
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<int>()
+        .toSet();
+
+    // Pending မဟုတ်သော Local Data အဟောင်းများကိုသာ ရွေးဖျက်သည် (အော့ဖ်လိုင်းဒေတာများ မပျက်တော့ပါ)
+    final currentLocalWorkspaces = await _localDao.getAllWorkspaces();
+    for (final local in currentLocalWorkspaces) {
+      if (!pendingLocalIds.contains(local.id)) {
+        await _localDao.deleteWorkspace(local.id);
+      }
     }
+
+    // ၃။ ဆာဗာမှရလာသော ဒေတာများကို Local DB သို့ မှန်ကန်သော ကော်လံဖြင့် ပြန်သွင်းသည်
+    for (final model in remoteWorkspaces) {
+      final numericId = int.tryParse(model.serverId ?? '');
+      await _localDao.insertWorkspace(
+        WorkspaceTableCompanion(id: numericId != null ? Value(numericId) : const Value.absent(), serverId: Value(model.serverId), name: Value(model.name), createdAt: Value(model.createdAt)),
+      );
+    }
+  }
+
+  @override
+  Future<void> updateWorkspace(int id, String newName) async {
+    await _localDao.updateWorkspaceLocal(id, newName);
+
+    // 💡 ဆာဗာထံ Update လှမ်းလုပ်ရန်အတွက် ဆာဗာ ID ကို အရင်ရှာပါ
+    final workspace = await _localDao.getWorkspaceById(id);
+    final String serverOrLocalId = workspace?.serverId ?? 'local_$id';
+
+    await _outboxDao.insertItem(
+      OutboxTableCompanion.insert(
+        method: 'PUT',
+        clientReferenceId: Value(id.toString()),
+        actionType: "updateWorkspace",
+        url: 'workspaces/$serverOrLocalId', // 🎯 စိတ်ချရအောင် ဆာဗာ ID ကို သုံးပြီး Path တည်ဆောက်သည်
+        payload: jsonEncode({'name': newName}),
+        status: const Value('pending'),
+        createdAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

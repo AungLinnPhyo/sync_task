@@ -7,8 +7,8 @@ class ProjectUsecase {
 
   Stream<List<ProjectEntity>> watchProjects(String workspaceId) => _repository.watchProjects(workspaceId);
 
-  Future<void> createProject({required String name, required String workspaceId}) async {
+  Future<void> createProject({required String name, required int localWorkspaceId}) async {
     if (name.isEmpty) throw Exception('Project name cannot be empty');
-    return _repository.createProject(name: name, workspaceId: workspaceId);
+    return _repository.createProject(name: name, localWorkspaceId: localWorkspaceId);
   }
 }

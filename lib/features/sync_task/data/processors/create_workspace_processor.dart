@@ -4,13 +4,14 @@ import 'package:core_offline/core_offline.dart';
 import 'package:core_offline/exceptions/sync_exceptions.dart';
 import 'package:dio/dio.dart';
 
-import '../data_sources/local/daos/reference_dao.dart';
+import '../data_sources/local/daos/workspace_dao.dart';
 
 class CreateWorkspaceProcessor implements OutboxActionProcessor {
   final Dio _dio;
-  final ReferenceDao _referenceDao;
+  // final ReferenceDao _referenceDao;
+  final WorkspaceDao _workspaceDao;
 
-  CreateWorkspaceProcessor(this._dio, this._referenceDao);
+  CreateWorkspaceProcessor(this._dio, this._workspaceDao);
 
   @override
   // 💡 သင့် Outbox Engine ရဲ့ Map Key နှင့် ကိုက်ညီရန် Action Name သတ်မှတ်ခြင်း
@@ -19,24 +20,34 @@ class CreateWorkspaceProcessor implements OutboxActionProcessor {
   @override
   Future<Map<String, dynamic>?> process(OfflineOutboxItem item) async {
     try {
-      // 🎯 Template ထဲမှ payloadAsMap helper အား သုံးထားသည်
       final Map<String, dynamic> payload = item.payloadAsMap;
+
+      // 🎯 ၁။ Robust Parsing: String လာလာ၊ int လာလာ စိတ်ချရအောင် ပြောင်းဖတ်မည်
+      final int? localId = payload['localId'] != null ? int.tryParse(payload['localId'].toString()) : null;
 
       final options = Options(headers: {if (item.clientReferenceId != null) 'X-Idempotency-Key': item.clientReferenceId});
 
-      log('Create Workspace Payload: $payload with URL: ${item.url}');
+      log('🔄 [Sync Engine] Processing Workspace: localId=$localId, payload=$payload');
 
-      // Node.js Local Server သို့ လှမ်းပို့ခြင်း
       final response = await _dio.post(item.url, data: payload, options: options);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
-        // 💡 Server ID က int ဖြစ်နေနိုင်လို့ String ပြောင်းပေးရပါမယ် (Mapping Table က String လက်ခံလို့ပါ)
-        if (data['id'] != null) data['id'] = data['id'].toString();
+
+        if (data['id'] != null) {
+          final serverId = data['id'].toString();
+
+          // 🎯 ၂။ ဒေတာအခြေအနေကို စစ်ဆေးပြီး လင့်ချိတ်မည်
+          if (localId != null && localId != 0) {
+            await _workspaceDao.updateServerId(localId, serverId);
+            log('🎯 [Dual-ID] Successfully linked Workspace Local ID: $localId to Server ID: $serverId');
+          } else {
+            // 🚨 ဤနေရာသည် တရားခံကို ဖမ်းမိမည့်နေရာ ဖြစ်သည်
+            log('⚠️ [Sync Warning] Workspace ဆာဗာပေါ်ရောက်သွားသော်လည်း Outbox Payload ထဲတွင် "localId" ပါမလာသောကြောင့် (သို့မဟုတ် 0 ဖြစ်နေ၍) Local DB ကို Update မလုပ်နိုင်ခဲ့ပါ။');
+          }
+        }
 
         return data;
-        // 💡 ဆာဗာ ID နှင့် UUID Mapping ကို Engine ထဲက လိုင်းနံပါတ် ၁၃၈ မှာ အလိုအလျောက် မှတ်ပေးသွားမှာ ဖြစ်လို့
-        // ဒီနေရာမှာ သီးသန့် saveMapping ထပ်ရေးစရာ မလိုတော့ပါဘူး။ အလွန်ကောင်းမွန်တဲ့ Engine logic ပါဗျာ။
       }
 
       // ဆာဗာဘက်က Error Response ပြန်လာလျှင်

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
@@ -16,34 +18,39 @@ class ProjectRepositoryImpl implements ProjectRepository {
 
   @override
   Stream<List<ProjectEntity>> watchProjects(String workspaceId) {
-    return _projectDao.watchProjectsByWorkspace(workspaceId).map((driftItems) {
-      return driftItems.map((item) => ProjectEntity(id: item.id, workspaceId: item.workspaceId, name: item.name, createdAt: item.createdAt)).toList();
+    // ၁။ ဝင်လာသော String Workspace ID အား Local DB က နားလည်မည့် int ပြောင်းသည်
+    final localWorkspaceId = int.tryParse(workspaceId) ?? 0;
+
+    return _projectDao.watchProjectsByWorkspace(localWorkspaceId).map((driftItems) {
+      return driftItems.map((item) {
+        // 🎯 သန့်ရှင်းကျစ်လျစ်သွားသော ဒေတာ Mapping စနစ်
+        return ProjectEntity(
+          localId: item.id, // 🏠 Drift ကပေးသော int id ကို တိုက်ရိုက်ထည့်သည်
+          serverId: item.serverId, // 🌐 String? serverId ကို တိုက်ရိုက်ထည့်သည်
+          localWorkspaceId: item.workspaceId, // 🏠 Local Workspace Int ID ကို တိုက်ရိုက်ထည့်သည်
+          name: item.name,
+          createdAt: item.createdAt,
+        );
+      }).toList();
     });
   }
 
   @override
-  Future<void> createProject({required String name, required String workspaceId}) async {
-    // ၁။ ပရောဂျက်အတွက် ယာယီ UUID ထုတ်ယူခြင်း
-    final tempProjectId = 'p-${_uuid.v4()}';
+  Future<void> createProject({required String name, required int localWorkspaceId}) async {
+    final idempotencyKey = _uuid.v4(); // Network Safety အတွက် သီးသန့် UUID
 
-    // ၂။ Local Project Table ထဲသို့ ချက်ချင်း သွင်းခြင်း
-    await _projectDao.insertProject(
-      ProjectTableCompanion.insert(
-        id: tempProjectId,
-        workspaceId: workspaceId, // 💡 ယာယီဖြစ်စေ၊ ဆာဗာ ID ဖြစ်စေ လက်ရှိ ID အတိုင်းသွင်းမည်
-        name: name,
-        createdAt: Value(DateTime.now()),
-      ),
-    );
+    // ၁။ Local DB ထဲသို့ အရင်သိမ်းပြီး Project ၏ Local Int ID ကို ယူသည်
+    final localProjectId = await _projectDao.insertProject(ProjectTableCompanion.insert(name: name, workspaceId: localWorkspaceId));
 
-    // ၃။ သင့် OutboxDao ကိုသုံးပြီး 'createProject' အလုပ်အား Queue ထဲထည့်ခြင်း
+    // ၂။ Outbox Queue ထဲသို့ ထည့်သွင်းမည်
     await _outboxDao.insertItem(
       OutboxTableCompanion.insert(
         url: 'projects',
         method: 'POST',
-        actionType: 'createProject', // 💡 CreateProjectProcessor ၏ actionType နှင့် ကွက်တိတူရမည်
-        payload: '{"name": "$name", "workspaceId": "$workspaceId"}', // Payload ထဲတွင် Parent ID အား ထည့်ပေးလိုက်သည်
-        clientReferenceId: Value(tempProjectId),
+        actionType: 'createProject',
+        clientReferenceId: Value(idempotencyKey),
+        // 🎯 Payload ထဲတွင် ID ရော၊ Workspace ID ပါ ထည့်ပေးလိုက်ပါပြီ
+        payload: jsonEncode({"localId": localProjectId, "localWorkspaceId": localWorkspaceId, "name": name}),
         createdAt: Value(DateTime.now()),
         status: const Value('pending'),
       ),
